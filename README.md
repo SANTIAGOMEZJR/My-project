@@ -1,4 +1,4 @@
-# 🏕️ MEGA PACK SUPERVIVENCIA - 11 Juegos HTML
+# 🏕️ MEGA PACK SUPERVIVENCIA - 12 Juegos HTML
 
 ¡Bienvenido a tu pack de juegos de supervivencia! Todos funcionan sin internet, directo en el navegador.
 
@@ -21,11 +21,25 @@ Solo entra a `index.html` y juega.
 6. **Bunker 2077** (`bunker-2077.html`) - Gestión post-apocalíptica
 
 ### Juegos DESCARGADOS de GitHub (open-source):
-7. **Canvas Vampire Survivors** - El original bullet-hell
-8. **Neon Strike** - Shooter neón
-9. **Minecraft HTML** - ¡Ahora en ESPAÑOL! Traducido por mí
-10. **Ghost Dodger** - Esquiva fantasmas
-11. **Pet Shield Game** - Protege a tu mascota
+7. **🚀 Space Huggers** (`space-huggers/`) - ⭐ **EL MEJOR DEL PACK**. Run-and-gun roguelike de Frank Force, 8vo lugar mundial en js13kGames 2021. ¡Todo el juego en 13 KB! Niveles procedurales, entornos 100% destructibles, cooperativo de 2-4 jugadores. [Ver guía completa](space-huggers/README.md)
+8. **Canvas Vampire Survivors** - El original bullet-hell
+9. **Neon Strike** - Shooter neón
+10. **Minecraft HTML** - ¡Ahora en ESPAÑOL! Traducido por mí
+11. **Ghost Dodger** - Esquiva fantasmas
+12. **Pet Shield Game** - Protege a tu mascota
+
+## 🎥 VIDEO DE GAMEPLAY (Space Huggers)
+
+Como no puedo grabar video, te dejé **links a videos reales de gameplay** dentro de `index.html`
+(el video largo está embebido y se reproduce ahí mismo) y en `space-huggers/README.md`:
+
+- 🎬 Gameplay completo llegando al nivel 10: https://www.youtube.com/watch?v=aoZ898TWN_Y
+- 🎬 Video demo oficial del autor: https://www.youtube.com/watch?v=6VXrnk18Z4s
+
+> ⚠️ **Ojo con la licencia de Space Huggers:** el autor declara que es *"solo con fines de
+> aprendizaje y no está pensado para ser redistribuido"* (código GPL-3.0). Jugarlo y estudiarlo
+> en tu máquina está perfecto, pero **NO lo subas a tu GitHub Pages**. Para compartirlo usa el
+> link oficial: https://killedbyapixel.github.io/SpaceHuggers/
 
 ## 🌐 Cómo subirlo a GitHub (PARA PRINCIPIANTES)
 

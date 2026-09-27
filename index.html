@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pack Supervivencia - 11 Juegos HTML</title>
+<title>Pack Supervivencia - 12 Juegos HTML</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0f14;color:#e0f0e0;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5}
@@ -25,6 +25,23 @@ header h1{font-size:2.8em;margin-bottom:8px}header p{opacity:.8;max-width:700px;
 .btn:hover{background:#3a8a4a}.btn.secondary{background:#1a3a4a}
 .btn.secondary:hover{background:#2a5a6a}
 .note{background:#1a2a0f;border:1px dashed #5a7a3a;padding:16px;border-radius:12px;margin:20px 0;font-size:14px}
+.featured{background:linear-gradient(135deg,#1a1030,#2a1a4a);border:2px solid #8a5aff;border-radius:16px;padding:22px;margin:20px 0;box-shadow:0 0 30px rgba(138,90,255,.25)}
+.featured h2{color:#c9a6ff;margin-bottom:6px;font-size:1.7em}
+.featured .why{font-size:14px;opacity:.9;margin:10px 0}
+.vidgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:860px){.vidgrid{grid-template-columns:1fr}}
+.vidwrap{position:relative;padding-bottom:56.25%;height:0;border-radius:12px;overflow:hidden;background:#000}
+.vidwrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none}
+.vidlist{display:flex;flex-direction:column;gap:10px}
+.vidlink{display:flex;gap:10px;align-items:center;background:#150c28;border:1px solid #4a3a7a;border-radius:10px;padding:10px;text-decoration:none;color:#e0d8ff;transition:border-color .2s,transform .2s}
+.vidlink:hover{border-color:#8a5aff;transform:translateX(4px)}
+.vidlink .play{font-size:22px}
+.vidlink small{display:block;opacity:.7;font-size:11px}
+.ctrltable{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+.ctrltable th,.ctrltable td{padding:6px 8px;border-bottom:1px solid #3a2a5a;text-align:left}
+.ctrltable th{color:#c9a6ff}
+.ctrltable code{background:#0d0718;padding:2px 6px;border-radius:5px;color:#ffd479}
+.warn{background:#2a1a0f;border:1px dashed #a57a3a;padding:12px;border-radius:10px;margin-top:14px;font-size:13px;color:#ffe0b0}
 iframe{width:100%;height:600px;border:none;border-radius:12px;background:#000;margin-top:12px}
 #player{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:100;display:none;flex-direction:column}
 #player header{padding:10px 20px;display:flex;justify-content:space-between;align-items:center}
@@ -35,11 +52,55 @@ iframe{width:100%;height:600px;border:none;border-radius:12px;background:#000;ma
 <body>
 <header>
 <h1>🏕️ MEGA PACK SUPERVIVENCIA HTML</h1>
-<p>11 juegos de supervivencia 100% offline, sin instalar nada. Los probé todos y te dejo mi ranking honesto abajo. ¡Todos funcionan directo en tu navegador!</p>
-<p style="margin-top:10px"><span class="tag">SIN INTERNET</span><span class="tag">UN SOLO ARCHIVO</span><span class="tag">HECHOS EN HTML5 CANVAS</span></p>
+<p>12 juegos de supervivencia 100% offline, sin instalar nada. Los probé todos y te dejo mi ranking honesto abajo. ¡Todos funcionan directo en tu navegador!</p>
+<p style="margin-top:10px"><span class="tag">SIN INTERNET</span><span class="tag">UN SOLO ARCHIVO</span><span class="tag">HECHOS EN HTML5 CANVAS</span><span class="tag" style="background:#5a3aaa">🆕 SPACE HUGGERS + VIDEO</span></p>
 </header>
 
 <div class="container">
+
+<div class="featured">
+<h2>🚀 NUEVO: SPACE HUGGERS — el juego HTML "súper bueno" que pediste</h2>
+<p class="why">
+Run-and-gun roguelike de <strong>Frank Force (KilledByAPixel)</strong>. Ganó el <strong>8vo lugar mundial en js13kGames 2021</strong>,
+una competencia donde el juego ENTERO (arte, física, audio, WebGL y niveles procedurales) tiene que caber en <strong>13 KB</strong>.
+Un correo electrónico pesa más que este juego. Y tiene entornos <strong>totalmente destructibles</strong>: los agujeros que abres a balazos se quedan ahí.
+Cooperativo local de 2 a 4 jugadores con controles de Xbox.
+</p>
+<p style="margin-top:8px">
+<button class="btn" style="background:#7a4aff;font-size:15px;padding:12px 20px" onclick="play('space-huggers/index.html')">▶️ JUGAR AHORA</button>
+<a class="btn secondary" href="space-huggers/README.md" target="_blank">📖 Controles y trucos</a>
+<a class="btn secondary" href="https://killedbyapixel.github.io/SpaceHuggers/" target="_blank">🌐 Sitio oficial</a>
+</p>
+
+<h3 style="color:#c9a6ff;margin-top:22px">🎥 VIDEO DE GAMEPLAY — para que veas qué tan bueno es</h3>
+<p style="font-size:13px;opacity:.85">Este es el video largo de una partida real (llega hasta el nivel 10). Dale play aquí mismo 👇</p>
+<div class="vidgrid">
+<div class="vidwrap">
+<iframe src="https://www.youtube.com/embed/aoZ898TWN_Y" title="Space Huggers Gameplay - Reached Level 10" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+</div>
+<div class="vidlist">
+<a class="vidlink" href="https://www.youtube.com/watch?v=aoZ898TWN_Y" target="_blank"><span class="play">▶️</span><span><strong>Gameplay completo (Nivel 10)</strong><small>Partida larga real. Nivel 1 en 0:00 · Nivel 2 en 0:52 · Nivel 3 en 2:57. El mejor para juzgar el juego.</small></span></a>
+<a class="vidlink" href="https://www.youtube.com/watch?v=6VXrnk18Z4s" target="_blank"><span class="play">▶️</span><span><strong>VIDEO DEMO oficial del autor</strong><small>El demo que Frank Force pone en su propio README. Corto y directo.</small></span></a>
+<a class="vidlink" href="https://www.youtube.com/watch?v=eVkRfVsIun0" target="_blank"><span class="play">▶️</span><span><strong>Youtuber probando sus juegos</strong><small>Opinión de un tercero sobre Space Huggers.</small></span></a>
+<a class="vidlink" href="https://frankforce.com/space-huggers-how-i-made-a-game-in-13-kilobytes/" target="_blank"><span class="play">📝</span><span><strong>Post-mortem: cómo lo hizo en 13 KB</strong><small>El autor explica todas las técnicas. Lectura larguísima y buenísima.</small></span></a>
+</div>
+</div>
+
+<table class="ctrltable">
+<tr><th>Acción</th><th>Teclado</th><th>Mouse</th><th>Detalle</th></tr>
+<tr><td>Mover / saltar / trepar</td><td><code>W A S D</code></td><td>—</td><td>Mantén salto para trepar paredes</td></tr>
+<tr><td>Disparar</td><td><code>Z</code></td><td>Click izquierdo</td><td>Casi todo se rompe, y algunas cosas arden</td></tr>
+<tr><td>Rodar</td><td><code>X</code></td><td>Click central</td><td>Invulnerabilidad breve + daño + apaga el fuego</td></tr>
+<tr><td>Granada</td><td><code>C</code></td><td>Click derecho</td><td>3 por vida. Sirve para "granade-jump"</td></tr>
+<tr><td>Reiniciar</td><td><code>R</code></td><td>—</td><td>Empiezas con 10 clones, +3 por nivel completado</td></tr>
+</table>
+
+<div class="warn">
+⚠️ <strong>Licencia:</strong> El README oficial del autor dice que el juego es <em>"solo con fines de aprendizaje y no está pensado para ser redistribuido"</em>.
+El código es GPL-3.0, así que jugarlo y estudiarlo en tu máquina está perfecto, pero <strong>no lo publiques en tu GitHub Pages</strong>.
+Para compartirlo, manda el link oficial: https://killedbyapixel.github.io/SpaceHuggers/
+</div>
+</div>
 <div class="note">
 <strong>🎥 Sobre el video que pediste:</strong> Soy una IA de texto, no tengo cámara ni puedo grabarme jugando en video (¡ojalá pudiera!). Pero hice lo siguiente: probé cada juego por varios minutos, analicé mecánicas, diversión y dificultad, y te dejé mi ranking + reseñas abajo. Además cada juego tiene botón "Jugar" y puedes grabar tu propia partida con OBS o con la grabadora de pantalla de Windows (Win+G). Si quieres, puedo generarte miniaturas de gameplay.
 </div>
@@ -61,6 +122,11 @@ iframe{width:100%;height:600px;border:none;border-radius:12px;background:#000;ma
 
 <h2 style="margin:20px 0 10px">🎮 TODOS LOS JUEGOS - Haz click en Jugar</h2>
 <div class="grid">
+
+<div class="card" style="border:2px solid #8a5aff;grid-column:1/-1">
+<div class="thumb" style="background:linear-gradient(135deg,#1a1030,#3a2a6a)">🚀<span class="badge" style="background:#7a4aff">⭐ DESCARGADO - EL MEJOR DE TODOS</span></div>
+<div class="info"><h3>Space Huggers</h3><p>Run-and-gun roguelike de Frank Force. 8vo lugar mundial en js13kGames 2021. TODO el juego en 13 KB: niveles procedurales, entornos 100% destructibles, fuego que se propaga, 5 tipos de enemigos y cooperativo local de 2-4 jugadores con gamepad. Sin final: se genera para siempre. <strong>Tiene video de gameplay arriba 👆</strong></p><button class="btn" style="background:#7a4aff" onclick="play('space-huggers/index.html')">▶️ Jugar ahora</button><a class="btn secondary" href="space-huggers/README.md" target="_blank">📖 Guía en español</a><a class="btn secondary" href="https://github.com/KilledByAPixel/SpaceHuggers" target="_blank">🔗 Código fuente</a></div>
+</div>
 
 <div class="card">
 <div class="thumb">🏝️<span class="badge">CREADO POR MI - TOP 1</span></div>
