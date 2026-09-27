@@ -1,0 +1,24 @@
+¡HOLA! ESTE ES TU PACK DE JUEGOS DE SUPERVIVENCIA
+
+SI NO SABES DE GITHUB, LEE ESTO:
+
+1. La forma MAS FACIL de tener tu pagina web:
+   - Ve a https://app.netlify.com/drop
+   - Arrastra esta carpeta completa
+   - ¡Listo! Te da un link para jugar en 10 segundos, sin cuenta.
+
+2. Si quieres GitHub:
+   - Lee el archivo COMO_SUBIR_A_GITHUB_PASO_A_PASO.md
+   - Esta explicado paso a paso con manzanas.
+
+3. Para jugar SIN INTERNET:
+   - Solo abre index.html con doble click
+   - Todos los juegos funcionan offline.
+
+MINECRAFT YA ESTA EN ESPAÑOL:
+   - Abre minecraft-html/index.html
+   - Ya no esta en chino, lo traduje todo.
+
+CUALQUIER DUDA, PREGUNTAME.
+
+- Tu asistente de Arena.ai

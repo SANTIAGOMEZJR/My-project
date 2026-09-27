@@ -1,0 +1,17 @@
+{
+  "name": "Ghost Dodger",
+  "short_name": "Ghost Dodger",
+  "description": "A fast-paced, highly addictive web-based survival game.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

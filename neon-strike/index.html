@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NEON STRIKE // Arena Protocol</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <canvas id="game" aria-label="Neon Strike arena"></canvas>
+      <div class="vignette"></div>
+      <section class="hud" aria-live="polite">
+        <div class="brand"><span>NEON</span> STRIKE <small>ARENA PROTOCOL</small></div>
+        <div class="objective"><span class="pulse"></span><span id="objectiveText">ELIMINATE HOSTILES</span></div>
+        <div class="stats top-stats">
+          <div><label>SCORE</label><strong id="score">000000</strong></div>
+          <div><label>WAVE</label><strong id="wave">01</strong></div>
+          <div><label>BEST</label><strong id="best">000000</strong></div>
+        </div>
+        <div class="player-panel">
+          <div class="health-row"><span>VITALS</span><div class="bar"><i id="healthBar"></i></div><b id="healthNum">100</b></div>
+          <div class="energy-row"><span>BLASTER</span><div class="bar energy"><i id="energyBar"></i></div><b id="ammoNum">∞</b></div>
+        </div>
+        <div class="weapon"><span class="weapon-icon">✦</span><div><small>ACTIVE SYSTEM</small><b id="weaponName">PULSE RIFLE</b></div><em id="combo">×1 COMBO</em></div>
+        <div class="controls"><kbd>WASD</kbd> MOVE <kbd>CLICK</kbd> FIRE <kbd>SPACE</kbd> DASH <kbd>P</kbd> PAUSE</div>
+      </section>
+      <section class="overlay active" id="startScreen">
+        <div class="panel">
+          <p class="eyebrow">SYSTEM ONLINE // 2089</p>
+          <h1>NEON<br /><span>STRIKE</span></h1>
+          <p class="lead">A tactical survival shooter. Clear the arena, collect tech, and keep your signal alive.</p>
+          <button id="startButton">INITIALIZE MISSION <span>→</span></button>
+          <p class="tip">Desktop: mouse + keyboard &nbsp;•&nbsp; Mobile: tap to steer and fire</p>
+        </div>
+      </section>
+      <section class="overlay hidden" id="pauseScreen"><div class="panel compact"><p class="eyebrow">MISSION SUSPENDED</p><h2>PAUSED</h2><button id="resumeButton">RESUME <span>→</span></button><p class="tip">Press P or Esc to continue</p></div></section>
+      <section class="overlay hidden" id="gameOverScreen"><div class="panel compact"><p class="eyebrow">SIGNAL LOST</p><h2>MISSION<br /><span>FAILED</span></h2><p class="result">Final score <b id="finalScore">000000</b><br />Reached wave <b id="finalWave">01</b></p><button id="restartButton">REDEPLOY <span>↻</span></button></div></section>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
+

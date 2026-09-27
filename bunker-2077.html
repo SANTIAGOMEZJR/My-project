@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Bunker 2077 - Supervivencia</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:#0f0f0f;color:#aaffaa;font-family:'Courier New';overflow:hidden}
+canvas{display:block;background:#1a1a1a;margin:0 auto}#ui{position:absolute;top:10px;left:10px;background:rgba(0,20,0,0.9);padding:12px;border-radius:8px;border:1px solid #3a6a3a;min-width:260px;font-size:13px}
+button{background:#2a5a2a;color:#aff;border:1px solid #4a8a4a;padding:5px 8px;margin:2px;border-radius:4px;cursor:pointer;font-size:11px}button:hover{background:#3a7a3a}
+.bar{height:8px;background:#111;border-radius:4px;overflow:hidden;margin:2px 0}.fill{height:100%}
+</style>
+</head>
+<body>
+<canvas id="g"></canvas>
+<div id="ui">
+<h3>☢️ BUNKER 2077</h3>
+<div>❤️ Salud: <div class="bar"><div id="hp" class="fill" style="background:#f44;width:100%"></div></div></div>
+<div>🍲 Comida: <span id="food">50</span> | 💧 Agua: <span id="water">50</span> | ⚡ Energía: <span id="energy">80</span></div>
+<div>🧟 Amenaza exterior: <div class="bar"><div id="threat" class="fill" style="background:#fa0;width:20%"></div></div></div>
+<div style="margin-top:8px">
+<button onclick="action('scavenge')">🔍 Saquear (riesgo)</button>
+<button onclick="action('farm')">🌱 Cultivar</button>
+<button onclick="action('water')">💧 Reciclar agua</button>
+<button onclick="action('defend')">🛡️ Reforzar bunker</button>
+<button onclick="action('rest')">😴 Descansar</button>
+</div>
+<div>📅 Día: <span id="day">1</span> | 📻 Mensajes: <span id="msgs">0</span></div>
+<div id="log" style="margin-top:8px;height:90px;overflow-y:auto;background:#000;padding:6px;border-radius:4px;font-size:11px"></div>
+</div>
+<script>
+const c=document.getElementById('g'),x=c.getContext('2d');function rs(){c.width=innerWidth;c.height=innerHeight}rs();addEventListener('resize',rs);
+let stats={hp:100,food:50,water:50,energy:80,threat:20,day:1,scrap:20},log=[],events=0,particles=[];
+function addLog(t){log.unshift(t);if(log.length>12)log.pop();document.getElementById('log').innerHTML=log.map(l=>`> ${l}`).join('<br>');}
+addLog('Despertaste en el bunker. El mundo exterior está devastado.');
+addLog('Mantén comida, agua y energía. La amenaza sube cada día.');
+function action(a){
+ if(a=='scavenge'){
+  if(stats.energy<15){addLog('Sin energía para saquear');return;}
+  stats.energy-=15; let risk=Math.random();
+  if(risk<0.3+stats.threat/200){let dmg=10+Math.random()*20;stats.hp-=dmg;stats.threat+=5;addLog(`¡Atacado! -${dmg.toFixed(0)} vida. Encontraste poco.`); particles.push({x:Math.random()*c.width,y:100,txt:`-${dmg.toFixed(0)}`,life:60});}
+  else{let f=10+Math.random()*20,w=10+Math.random()*20,s=5+Math.random()*15;stats.food+=f;stats.water+=w;stats.scrap+=s;addLog(`Saqueo exitoso +${f.toFixed(0)} comida +${w.toFixed(0)} agua +${s.toFixed(0)} chatarra`);}
+ }else if(a=='farm'){if(stats.water<10||stats.energy<10){addLog('Necesitas agua y energía');return;}stats.water-=10;stats.energy-=10;stats.food+=15;addLog('Cultivaste comida hidropónica +15');}
+ else if(a=='water'){if(stats.energy<10||stats.scrap<5){addLog('Necesitas energía y chatarra');return;}stats.energy-=10;stats.scrap-=5;stats.water+=20;addLog('Reciclaste agua +20');}
+ else if(a=='defend'){if(stats.scrap<15||stats.energy<15){addLog('Necesitas chatarra y energía');return;}stats.scrap-=15;stats.energy-=15;stats.threat=Math.max(0,stats.threat-20);addLog('Bunker reforzado -20 amenaza');}
+ else if(a=='rest'){stats.energy=Math.min(100,stats.energy+30);stats.hp=Math.min(100,stats.hp+5);stats.food-=5;stats.water-=5;addLog('Descansaste +30 energía'); nextDay();}
+ stats.food=Math.max(0,stats.food);stats.water=Math.max(0,stats.water);
+ if(stats.food==0||stats.water==0) stats.hp-=0.5;
+ if(stats.hp<=0){alert(`Moriste en el bunker día ${stats.day}. Chatarra: ${stats.scrap}`);location.reload();}
+ updateUI();
+}
+function nextDay(){
+ stats.day++; stats.threat+=5+Math.random()*10; stats.energy-=5;
+ if(Math.random()<0.3){events++;let ev=['Transmisión de otro bunker','Ruido extraño afuera','Lluvia ácida','Caravana pasa cerca'][Math.floor(Math.random()*4)];addLog(`📻 DÍA ${stats.day}: ${ev}`);}
+ if(stats.day%5==0){stats.food-=10;stats.water-=10;addLog(`Consumo diario -10 comida/agua`);}
+}
+setInterval(()=>{if(Math.random()<0.1) nextDay();},5000);
+function updateUI(){
+ document.getElementById('hp').style.width=stats.hp+'%';document.getElementById('food').textContent=Math.floor(stats.food);document.getElementById('water').textContent=Math.floor(stats.water);document.getElementById('energy').textContent=Math.floor(stats.energy);document.getElementById('threat').style.width=stats.threat+'%';document.getElementById('day').textContent=stats.day;document.getElementById('msgs').textContent=events;
+}
+function draw(){
+ x.fillStyle='#111';x.fillRect(0,0,c.width,c.height);
+ // bunker view
+ let cx=c.width/2,cy=c.height/2;
+ x.fillStyle='#2a2a2a';x.fillRect(cx-200,cy-150,400,300);x.fillStyle='#3a3a3a';x.fillRect(cx-190,cy-140,380,30); // ceiling light
+ x.fillStyle=`rgba(100,255,100,${0.3+Math.sin(Date.now()*0.005)*0.2})`;x.fillRect(cx-180,cy-130,360,10);
+ // interior items based on stats
+ x.fillStyle='#4a3a2a';x.fillRect(cx-180,cy+50,80,60);x.fillStyle='#6a5a3a';x.fillRect(cx-170,cy+60,60,10); // table
+ x.fillStyle='#2a5a2a';x.fillRect(cx+80,cy+20,100,90); // farm
+ for(let i=0;i<stats.food/10;i++){x.fillStyle='#3aaa3a';x.beginPath();x.arc(cx+90+i*12%80,cy+30+Math.floor(i/6)*15,4,0,Math.PI*2);x.fill();}
+ x.fillStyle='#2a4a6a';x.fillRect(cx-180,cy-100,60,80); // water recycler
+ x.fillStyle='#444';x.fillRect(cx+0,cy-50,40,100); // door
+ x.fillStyle=stats.threat>70?'#ff0000':stats.threat>40?'#ffaa00':'#00ff00';x.fillRect(cx+10,cy-40,20,10);
+ // threat outside
+ if(stats.threat>50){x.fillStyle=`rgba(255,0,0,${(stats.threat-50)/200})`;x.fillRect(0,0,c.width,c.height);}
+ for(let p of particles){x.fillStyle='#f44';x.font='20px monospace';x.fillText(p.txt,p.x,p.y);p.y-=1;p.life--; }particles=particles.filter(p=>p.life>0);
+ x.fillStyle='#0f0';x.font='12px monospace';x.fillText(`CHATARRA: ${Math.floor(stats.scrap)} | AMENAZA: ${Math.floor(stats.threat)}%`,cx-100,cy+140);
+ updateUI();
+ requestAnimationFrame(draw);
+}
+draw(); setInterval(updateUI,100);
+</script>
+</body>
+</html>

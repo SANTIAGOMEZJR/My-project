@@ -1,0 +1,9 @@
+{
+  "name": "minecraft-java-survival",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A browser-based voxel survival experience built as a single HTML file.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

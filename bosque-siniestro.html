@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Bosque Siniestro - Survival Horde</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:#050a05;color:#8f8;font-family:monospace;overflow:hidden}
+canvas{display:block;background:#0a1a0a}#ui{position:absolute;top:10px;left:10px;background:rgba(0,15,0,0.9);padding:10px;border-radius:10px;border:1px solid #2a5a2a;min-width:220px}
+.bar{height:10px;background:#111;border-radius:5px;overflow:hidden}.fill{height:100%}
+</style>
+</head>
+<body>
+<canvas id="g"></canvas>
+<div id="ui">
+<h3>🌲 BOSQUE SINIESTRO</h3>
+<div>❤️ <div class="bar"><div id="hp" class="fill" style="background:#f44;width:100%"></div></div></div>
+<div>✨ Nivel: <span id="lvl">1</span> | XP: <span id="xp">0</span>/100</div>
+<div>⏱️ Tiempo: <span id="time">00:00</span> | Enemigos: <span id="enemies">0</span></div>
+<div style="font-size:11px;margin-top:6px">WASD mover • Auto-disparo • Sobrevive lo más posible<br>¡Sube de nivel para elegir mejora!</div>
+<div id="upgrades" style="margin-top:8px;display:none;background:#000;padding:8px;border-radius:6px"></div>
+</div>
+<script>
+const c=document.getElementById('g'),x=c.getContext('2d');function rs(){c.width=innerWidth;c.height=innerHeight}rs();addEventListener('resize',rs);
+let player={x:0,y:0,hp:100,maxHp:100,lvl:1,xp:0,dmg:10,range:180,speed:3,fireRate:20,regen:0},enemies=[],bullets=[],exps=[],time=0,keys={},lastShot=0,choosing=false;
+let stats={kills:0};
+function spawnEnemy(){let ang=Math.random()*Math.PI*2,d=700;enemies.push({x:player.x+Math.cos(ang)*d,y:player.y+Math.sin(ang)*d,hp:10+time/300+player.lvl*2,max:10+time/300,speed:0.8+Math.random()*0.7+time/5000});}
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function levelUp(){
+ choosing=true;let opts=[{n:'+20% Daño',f:()=>player.dmg*=1.2},{n:'+15% Velocidad',f:()=>player.speed*=1.15},{n:'+25 Vida Máx',f:()=>{player.maxHp+=25;player.hp+=25}},{n:'+30% Cadencia',f:()=>player.fireRate=Math.max(5,player.fireRate*0.7)},{n:'+40% Rango',f:()=>player.range*=1.4},{n:'Regeneración +0.05',f:()=>player.regen+=0.05}].sort(()=>0.5-Math.random()).slice(0,3);
+ let div=document.getElementById('upgrades');div.style.display='block';div.innerHTML='<b>¡NIVEL UP! Elige:</b><br>'+opts.map((o,i)=>`<button onclick="pick(${i})" style="display:block;width:100%;margin:4px 0;padding:6px;background:#2a5a2a;color:#fff;border:none;border-radius:4px;cursor:pointer">${o.n}</button>`).join('');
+ window.pick=(i)=>{opts[i].f();div.style.display='none';choosing=false;};
+}
+function update(){
+ if(choosing) return;
+ time++; let sp=player.speed; if(keys['w'])player.y-=sp;if(keys['s'])player.y+=sp;if(keys['a'])player.x-=sp;if(keys['d'])player.x+=sp;
+ if(time%Math.max(5,60-time/100)==0) spawnEnemy();
+ if(time%10==0 && enemies.length<80) spawnEnemy();
+ // shooting
+ lastShot++; if(lastShot>=player.fireRate && enemies.length){
+  let closest=null,dmin=player.range; for(let e of enemies){let d=Math.hypot(e.x-player.x,e.y-player.y);if(d<dmin){dmin=d;closest=e}} if(closest){let ang=Math.atan2(closest.y-player.y,closest.x-player.x);bullets.push({x:player.x,y:player.y,dx:Math.cos(ang)*7,dy:Math.sin(ang)*7,dmg:player.dmg,life:60});lastShot=0;}
+ }
+ for(let b of bullets){b.x+=b.dx;b.y+=b.dy;b.life--;}
+ for(let i=bullets.length-1;i>=0;i--){let b=bullets[i]; for(let j=enemies.length-1;j>=0;j--){let e=enemies[j];if(Math.hypot(b.x-e.x,b.y-e.y)<14){e.hp-=b.dmg;bullets.splice(i,1);if(e.hp<=0){exps.push({x:e.x,y:e.y,v:10});enemies.splice(j,1);stats.kills++;}break;}} if(b && b.life<=0) bullets.splice(i,1);}
+ for(let e of enemies){let ang=Math.atan2(player.y-e.y,player.x-e.x);e.x+=Math.cos(ang)*e.speed;e.y+=Math.sin(ang)*e.speed; if(Math.hypot(e.x-player.x,e.y-player.y)<18){player.hp-=0.2+e.speed*0.1;}}
+ for(let i=exps.length-1;i>=0;i--){if(Math.hypot(exps[i].x-player.x,exps[i].y-player.y)<20){player.xp+=exps[i].v;exps.splice(i,1); if(player.xp>=100){player.xp-=100;player.lvl++;levelUp();}}}
+ player.hp=Math.min(player.maxHp,player.hp+player.regen); if(player.hp<=0){alert(`Moriste en el bosque. Tiempo: ${Math.floor(time/60)}s, Nivel ${player.lvl}, Kills ${stats.kills}`);location.reload();}
+ document.getElementById('hp').style.width=(player.hp/player.maxHp*100)+'%';document.getElementById('lvl').textContent=player.lvl;document.getElementById('xp').textContent=player.xp;document.getElementById('time').textContent=`${String(Math.floor(time/60/60)).padStart(2,'0')}:${String(Math.floor(time/60%60)).padStart(2,'0')}`;document.getElementById('enemies').textContent=enemies.length;
+}
+function draw(){
+ x.fillStyle='#0a1a0a';x.fillRect(0,0,c.width,c.height);
+ x.save();x.translate(c.width/2-player.x,c.height/2-player.y);
+ // trees
+ x.fillStyle='#0f2a0f';for(let ix=-2000;ix<2000;ix+=120)for(let iy=-2000;iy<2000;iy+=120){if((ix+iy)%240==0){x.fillRect(ix,iy,10,30);x.beginPath();x.arc(ix+5,iy,20,0,Math.PI*2);x.fill();}}
+ for(let e of exps){x.fillStyle='#44ff44';x.beginPath();x.arc(e.x,e.y,5,0,Math.PI*2);x.fill();}
+ for(let e of enemies){x.fillStyle='#aa2222';x.beginPath();x.arc(e.x,e.y,10,0,Math.PI*2);x.fill();x.fillStyle='#000';x.fillRect(e.x-10,e.y-14,e.hp/e.max*20,3);}
+ x.fillStyle='#ffaa00';for(let b of bullets){x.beginPath();x.arc(b.x,b.y,4,0,Math.PI*2);x.fill();}
+ x.fillStyle='#88aaff';x.beginPath();x.arc(player.x,player.y,12,0,Math.PI*2);x.fill();x.fillStyle='#fff';x.beginPath();x.arc(player.x,player.y,player.range,0,Math.PI*2);x.strokeStyle='rgba(100,150,255,0.08)';x.stroke();
+ x.restore();
+}
+function loop(){update();draw();requestAnimationFrame(loop)}loop();
+</script>
+</body>
+</html>

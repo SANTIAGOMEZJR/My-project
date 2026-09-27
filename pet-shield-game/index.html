@@ -1,0 +1,2245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#10263d">
+  <title>Pet Shield</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-rounded, "Arial Rounded MT Bold", Arial, sans-serif;
+      background: #081522;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background:
+        radial-gradient(circle at 50% 15%, #234f6d 0, #10263d 44%, #081522 100%);
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+        max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    }
+
+    #game-shell {
+      position: relative;
+      width: min(calc((100vh - 16px) * 0.5625), calc(100vw - 16px));
+      aspect-ratio: 9 / 16;
+      overflow: hidden;
+      border: 1px solid #9fe4ff44;
+      border-radius: clamp(12px, 3vw, 24px);
+      background: #87cfa1;
+      box-shadow: 0 24px 70px #0009, inset 0 0 0 1px #ffffff18;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #game-root,
+    #game-root canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    @media (hover: none) and (pointer: coarse), (max-width: 600px) {
+      body {
+        display: block;
+        padding: 0;
+        background: #87cfa1 url("assets/background/bg.png") center / cover no-repeat;
+      }
+
+      #game-shell {
+        width: 100vw;
+        height: 100dvh;
+        aspect-ratio: auto;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        background: #87cfa1 url("assets/background/bg.png") center / cover no-repeat;
+      }
+
+      #game-root {
+        position: absolute;
+        left: 50%;
+        top: calc(
+          env(safe-area-inset-top)
+          + (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2
+        );
+        width: min(
+          100vw,
+          calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.5625)
+        );
+        height: min(
+          calc(100vw * 1.7777778),
+          calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))
+        );
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    @media (hover: none) and (pointer: coarse) and (orientation: landscape),
+      (max-width: 900px) and (orientation: landscape) {
+      body {
+        padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+      }
+
+      #game-shell {
+        width: 100vw;
+        height: 100dvh;
+        aspect-ratio: auto;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        background: #87cfa1 url("assets/background/bg.png") center / cover no-repeat;
+      }
+
+      #game-root {
+        position: absolute;
+        left: 50%;
+        top: calc(
+          env(safe-area-inset-top)
+          + (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2
+        );
+        width: calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.5625);
+        height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    #loading {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      color: #effbff;
+      text-align: center;
+      background: linear-gradient(160deg, #173b55, #0d2034);
+    }
+
+    #loading strong {
+      display: block;
+      margin-bottom: 10px;
+      color: #73ddff;
+      font-size: clamp(22px, 7vw, 34px);
+      letter-spacing: 0.12em;
+    }
+
+    #loading span {
+      display: block;
+      max-width: 280px;
+      color: #c5dce8;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <main id="game-shell" aria-label="Pet Shield game">
+    <div id="game-root"></div>
+    <div id="loading" role="status" aria-live="polite">
+      <div>
+        <strong>PET SHIELD</strong>
+        <span id="loading-message">Loading Phaser…</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    window.PET_SHIELD_ASSETS = {
+      version: 0,
+      basePath: 'assets/',
+      debug: false,
+      entities: {},
+      environment: {},
+      effects: {},
+      ui: {},
+    };
+  </script>
+  <script src="assets/manifest.js"></script>
+
+  <script id="pet-shield-core">
+    (() => {
+      'use strict';
+
+      const CONFIG = Object.freeze({
+        width: 360,
+        height: 640,
+        petRadius: 26,
+        enemyRadius: 12,
+        shieldRadius: 7,
+        shieldMaxLength: 360,
+        shieldSampleDistance: 8,
+        shieldDuration: 8,
+        shieldWarningDuration: 2,
+        shieldLoopGuardStartLength: 180,
+        shieldLoopGuardRadius: 72,
+        baseEnemySpeed: 48,
+        baseSpawnInterval: 1600,
+        minSpawnInterval: 450,
+        maxEnemies: 14,
+        enemyMaxLifetime: 12,
+        enemyShieldHits: 3,
+        enemyDefeatScore: 5,
+        separationSeconds: 0.35,
+      });
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+      function distanceSq(a, b) {
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        return dx * dx + dy * dy;
+      }
+
+      function distance(a, b) {
+        return Math.sqrt(distanceSq(a, b));
+      }
+
+      function samplePolyline(points, progress) {
+        if (!Array.isArray(points) || points.length === 0) {
+          return { point: { x: 0, y: 0 }, visiblePoints: [] };
+        }
+        if (points.length === 1) {
+          return { point: { ...points[0] }, visiblePoints: [{ ...points[0] }] };
+        }
+
+        const lengths = [];
+        let total = 0;
+        for (let index = 1; index < points.length; index += 1) {
+          const length = distance(points[index - 1], points[index]);
+          lengths.push(length);
+          total += length;
+        }
+
+        let remaining = total * clamp(progress, 0, 1);
+        const visiblePoints = [{ ...points[0] }];
+        for (let index = 1; index < points.length; index += 1) {
+          const length = lengths[index - 1];
+          if (remaining >= length) {
+            visiblePoints.push({ ...points[index] });
+            remaining -= length;
+            if (remaining <= 1e-9) {
+              return { point: { ...points[index] }, visiblePoints };
+            }
+            continue;
+          }
+          const ratio = length > 0 ? remaining / length : 0;
+          const previous = points[index - 1];
+          const current = points[index];
+          const point = {
+            x: previous.x + (current.x - previous.x) * ratio,
+            y: previous.y + (current.y - previous.y) * ratio,
+          };
+          visiblePoints.push(point);
+          return { point, visiblePoints };
+        }
+
+        return { point: { ...points[points.length - 1] }, visiblePoints };
+      }
+
+      function closestPointOnSegment(point, a, b) {
+        const abx = b.x - a.x;
+        const aby = b.y - a.y;
+        const lengthSq = abx * abx + aby * aby;
+        if (lengthSq <= 1e-12) {
+          return { x: a.x, y: a.y, t: 0, distanceSq: distanceSq(point, a) };
+        }
+        const t = clamp(((point.x - a.x) * abx + (point.y - a.y) * aby) / lengthSq, 0, 1);
+        const x = a.x + abx * t;
+        const y = a.y + aby * t;
+        const dx = point.x - x;
+        const dy = point.y - y;
+        return { x, y, t, distanceSq: dx * dx + dy * dy };
+      }
+
+      function clipStrokePoint(last, candidate, remaining) {
+        const dx = candidate.x - last.x;
+        const dy = candidate.y - last.y;
+        const segmentLength = Math.hypot(dx, dy);
+        if (segmentLength <= 1e-9 || remaining <= 1e-9) {
+          return { accepted: false, point: { x: last.x, y: last.y }, used: 0 };
+        }
+        const used = Math.min(segmentLength, remaining);
+        const ratio = used / segmentLength;
+        return {
+          accepted: true,
+          point: { x: last.x + dx * ratio, y: last.y + dy * ratio },
+          used,
+        };
+      }
+
+      function reflectVelocity(velocity, normal) {
+        const length = Math.hypot(normal.x, normal.y);
+        if (length <= 1e-9) return { x: -velocity.x, y: -velocity.y };
+        const nx = normal.x / length;
+        const ny = normal.y / length;
+        const dot = velocity.x * nx + velocity.y * ny;
+        return {
+          x: velocity.x - 2 * dot * nx,
+          y: velocity.y - 2 * dot * ny,
+        };
+      }
+
+      function segmentCircleEntry(from, to, center, radius) {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const fx = from.x - center.x;
+        const fy = from.y - center.y;
+        const aa = dx * dx + dy * dy;
+        if (aa <= 1e-12) return { hit: false };
+        const cc = fx * fx + fy * fy - radius * radius;
+        if (cc <= 0) {
+          return { hit: true, time: 0, point: { x: from.x, y: from.y } };
+        }
+        const bb = 2 * (fx * dx + fy * dy);
+        const discriminant = bb * bb - 4 * aa * cc;
+        if (discriminant < 0) return { hit: false };
+        const time = (-bb - Math.sqrt(discriminant)) / (2 * aa);
+        if (time < 0 || time > 1) return { hit: false };
+        return {
+          hit: true,
+          time,
+          point: { x: from.x + dx * time, y: from.y + dy * time },
+        };
+      }
+
+      function sweepPointCircle(start, delta, radius, center) {
+        const ox = start.x - center.x;
+        const oy = start.y - center.y;
+        const aa = delta.x * delta.x + delta.y * delta.y;
+        const cc = ox * ox + oy * oy - radius * radius;
+        if (cc <= 0) return 0;
+        if (aa <= 1e-12) return null;
+        const bb = 2 * (ox * delta.x + oy * delta.y);
+        const discriminant = bb * bb - 4 * aa * cc;
+        if (discriminant < 0) return null;
+        const root = Math.sqrt(discriminant);
+        const first = (-bb - root) / (2 * aa);
+        const second = (-bb + root) / (2 * aa);
+        if (first >= 0 && first <= 1) return first;
+        if (second >= 0 && second <= 1) return second;
+        return null;
+      }
+
+      function sweptCircleSegment(start, end, radius, a, b) {
+        const delta = { x: end.x - start.x, y: end.y - start.y };
+        const segment = { x: b.x - a.x, y: b.y - a.y };
+        const segmentLength = Math.hypot(segment.x, segment.y);
+        const candidates = [];
+
+        const initial = closestPointOnSegment(start, a, b);
+        if (initial.distanceSq <= radius * radius) {
+          let nx = start.x - initial.x;
+          let ny = start.y - initial.y;
+          const normalLength = Math.hypot(nx, ny);
+          if (normalLength <= 1e-9) {
+            nx = segmentLength > 1e-9 ? -segment.y / segmentLength : -delta.x;
+            ny = segmentLength > 1e-9 ? segment.x / segmentLength : -delta.y;
+          } else {
+            nx /= normalLength;
+            ny /= normalLength;
+          }
+          candidates.push({ time: 0, normal: { x: nx, y: ny } });
+        }
+
+        if (segmentLength > 1e-9) {
+          const tx = segment.x / segmentLength;
+          const ty = segment.y / segmentLength;
+          const nx = -ty;
+          const ny = tx;
+          const startDistance = (start.x - a.x) * nx + (start.y - a.y) * ny;
+          const deltaDistance = delta.x * nx + delta.y * ny;
+
+          if (Math.abs(deltaDistance) > 1e-12) {
+            for (const side of [-1, 1]) {
+              const time = (side * radius - startDistance) / deltaDistance;
+              if (time < 0 || time > 1) continue;
+              const px = start.x + delta.x * time;
+              const py = start.y + delta.y * time;
+              const projection = (px - a.x) * tx + (py - a.y) * ty;
+              if (projection >= 0 && projection <= segmentLength) {
+                candidates.push({ time, normal: { x: nx * side, y: ny * side } });
+              }
+            }
+          }
+        }
+
+        for (const endpoint of [a, b]) {
+          const time = sweepPointCircle(start, delta, radius, endpoint);
+          if (time === null) continue;
+          const px = start.x + delta.x * time;
+          const py = start.y + delta.y * time;
+          const nx = px - endpoint.x;
+          const ny = py - endpoint.y;
+          const normalLength = Math.hypot(nx, ny) || 1;
+          candidates.push({
+            time,
+            normal: { x: nx / normalLength, y: ny / normalLength },
+          });
+        }
+
+        if (candidates.length === 0) return { hit: false };
+        candidates.sort((left, right) => left.time - right.time);
+        const first = candidates[0];
+        return {
+          hit: true,
+          time: first.time,
+          normal: first.normal,
+          position: {
+            x: start.x + delta.x * first.time,
+            y: start.y + delta.y * first.time,
+          },
+        };
+      }
+
+      function difficultyAt(elapsedSeconds) {
+        const tier = Math.max(0, elapsedSeconds) / 20;
+        return {
+          speed: CONFIG.baseEnemySpeed * (1 + tier * 0.1),
+          spawnInterval: Math.max(
+            CONFIG.minSpawnInterval,
+            CONFIG.baseSpawnInterval - tier * 120,
+          ),
+          enemyCap: Math.min(CONFIG.maxEnemies, 5 + Math.floor(tier * 2)),
+        };
+      }
+
+      window.PetShieldCore = Object.freeze({
+        CONFIG,
+        clamp,
+        distance,
+        distanceSq,
+        samplePolyline,
+        closestPointOnSegment,
+        clipStrokePoint,
+        reflectVelocity,
+        segmentCircleEntry,
+        sweptCircleSegment,
+        difficultyAt,
+      });
+    })();
+  </script>
+
+  <script>
+    window.showPhaserLoadError = () => {
+      const message = document.getElementById('loading-message');
+      if (message) {
+        message.textContent = 'Phaser could not be loaded. Check your internet connection and refresh the page.';
+      }
+    };
+  </script>
+  <script src="lib/phaser.min.js" onerror="showPhaserLoadError()"></script>
+  <script>
+    (() => {
+      'use strict';
+
+      if (!window.Phaser) {
+        window.showPhaserLoadError();
+        return;
+      }
+
+      const Core = window.PetShieldCore;
+      const C = Core.CONFIG;
+      const UI_RESOLUTION = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+      const UI_FONT = 'ui-rounded, "Arial Rounded MT Bold", "Trebuchet MS", Arial, sans-serif';
+      const COLORS = {
+        navy: 0x102c45,
+        blue: 0x48baf2,
+        blueLight: 0xcaf3ff,
+        blueGlow: 0x69d6ff,
+        field: 0x8bd49b,
+        fieldDark: 0x6abd83,
+        cream: 0xfff6dc,
+        ink: 0x17324d,
+        red: 0xf05b62,
+        redDark: 0xb73748,
+        amber: 0xffc65c,
+        mint: 0x72dfc5,
+        mintLight: 0xd8fff2,
+        peach: 0xffc9b5,
+        rose: 0xdf8f88,
+        white: 0xffffff,
+      };
+
+      class PetShieldScene extends Phaser.Scene {
+        constructor() {
+          super('PetShield');
+          this.runState = 'boot';
+          this.enemies = [];
+          this.enemyPool = [];
+          this.shieldPoints = [];
+          this.previewPoints = [];
+          this.assetFailures = new Set();
+          this.visualTiers = { pet: 'fallback', bee: 'fallback', background: 'fallback' };
+          this.collisionRadii = { pet: C.petRadius, bee: C.enemyRadius };
+          this.shieldReveal = { alpha: 1 };
+          this.fadingShieldVisuals = new Set();
+          this.onboardingActive = false;
+          this.onboardingSessionComplete = false;
+          this.onboardingLayer = null;
+          this.onboardingTimers = [];
+          this.onboardingProgress = { value: 0 };
+          this.onboardingPath = [];
+          this.onboardingGhost = null;
+          this.onboardingHand = null;
+          this.onboardingDemoBee = null;
+        }
+
+        preload() {
+          this.artManifest = window.PET_SHIELD_ASSETS || {
+            version: 0,
+            basePath: 'assets/',
+            debug: false,
+            entities: {},
+            environment: {},
+            effects: {},
+            ui: {},
+          };
+          const loadingMessage = document.getElementById('loading-message');
+          this.load.on('progress', (value) => {
+            if (loadingMessage) loadingMessage.textContent = `Preparing art… ${Math.round(value * 100)}%`;
+          });
+          this.load.on('loaderror', (file) => {
+            this.assetFailures.add(file.key);
+          });
+          this.load.on('complete', () => {
+            if (loadingMessage) loadingMessage.textContent = 'Starting Pet Shield…';
+          });
+
+          const basePath = this.artManifest.basePath || 'assets/';
+          for (const entry of this.getManifestAssetEntries()) {
+            if (!entry || !entry.enabled || !entry.key || !entry.path) continue;
+            const url = `${basePath}${entry.path}`;
+            if (entry.type === 'spritesheet') {
+              this.load.spritesheet(entry.key, url, {
+                frameWidth: entry.frameWidth,
+                frameHeight: entry.frameHeight,
+              });
+            } else {
+              this.load.image(entry.key, url);
+            }
+          }
+        }
+
+        create() {
+          this.cameras.main.setZoom(UI_RESOLUTION);
+          this.cameras.main.centerOn(C.width / 2, C.height / 2);
+          this.registerManifestAnimations();
+          this.configureCollisionRadii();
+          this.drawBackground();
+          this.committedShield = this.add.graphics().setDepth(22);
+          this.previewShield = this.add.graphics().setDepth(24);
+          this.impactLayer = this.add.graphics().setDepth(26);
+          this.debugLayer = this.add.graphics().setDepth(95);
+          this.debugLabel = this.createSharpText(8, 102, '', {
+            fontFamily: 'monospace',
+            fontSize: '10px',
+            color: '#ffffff',
+            backgroundColor: '#102c45dd',
+            padding: { x: 6, y: 5 },
+          }).setDepth(96).setVisible(false);
+          this.pet = this.createPet();
+          this.createInterface();
+          this.bindInput();
+
+          this.elapsedSeconds = 0;
+          this.score = 0;
+          this.bonusScore = 0;
+          this.bestScore = this.readBestScore();
+          this.spawnAccumulator = 0;
+          this.isPagePaused = false;
+          this.drawing = false;
+          this.drawingPointerId = null;
+          this.previewLength = 0;
+          this.shieldTimeRemaining = 0;
+          this.loopGuardArmed = false;
+          this.loopGuardLocked = false;
+
+          this.visibilityHandler = () => {
+            const shouldPause = document.hidden;
+            this.isPagePaused = shouldPause;
+            if (shouldPause && this.drawing) this.finishDrawing();
+            if (shouldPause) this.finishOnboarding(false);
+            if (shouldPause) this.clearFadingShields();
+            const canShow = this.runState === 'playing';
+            this.pauseText.setVisible(shouldPause && canShow);
+          };
+          document.addEventListener('visibilitychange', this.visibilityHandler);
+          this.events.once('shutdown', () => {
+            this.finishOnboarding(false);
+            this.clearFadingShields();
+            document.removeEventListener('visibilitychange', this.visibilityHandler);
+            this.events.off('postupdate', this.renderArtDebug, this);
+          });
+          this.events.on('postupdate', this.renderArtDebug, this);
+
+          Object.defineProperty(window, '__PET_SHIELD_DEBUG__', {
+            configurable: true,
+            get: () => ({
+              state: this.runState,
+              elapsedSeconds: this.elapsedSeconds,
+              score: this.score,
+              bonusScore: this.bonusScore,
+              enemyCount: this.enemies.length,
+              shieldPointCount: this.shieldPoints.length,
+              shieldTimeRemaining: this.shieldTimeRemaining,
+              loopGuardArmed: this.loopGuardArmed,
+              loopGuardLocked: this.loopGuardLocked,
+              previewPointCount: this.previewPoints.length,
+              onboardingActive: this.onboardingActive,
+              paused: this.isPagePaused,
+              visualTiers: { ...this.visualTiers },
+              assetFailures: [...this.assetFailures],
+            }),
+          });
+
+          this.enterReady();
+          const loading = document.getElementById('loading');
+          if (loading) loading.remove();
+        }
+
+        getManifestAssetEntries() {
+          const manifest = this.artManifest || window.PET_SHIELD_ASSETS || {};
+          const pet = manifest.entities?.pet || {};
+          const bee = manifest.entities?.bee || {};
+          return [
+            pet.idleSheet,
+            pet.static,
+            pet.hurtSheet,
+            bee.flySheet,
+            bee.static,
+            manifest.environment?.meadow,
+            manifest.effects?.shieldParticle,
+            manifest.effects?.hitSpark,
+            manifest.effects?.success,
+            manifest.ui?.startButton,
+            manifest.ui?.panel,
+            manifest.ui?.startPetHappy,
+            manifest.ui?.resultPetHurt,
+          ].filter(Boolean);
+        }
+
+        textureAvailable(entry) {
+          return Boolean(
+            entry
+            && entry.enabled
+            && entry.key
+            && !this.assetFailures.has(entry.key)
+            && this.textures.exists(entry.key),
+          );
+        }
+
+        registerManifestAnimations() {
+          for (const entry of this.getManifestAssetEntries()) {
+            if (!this.textureAvailable(entry) || !entry.animation) continue;
+            const animation = entry.animation;
+            if (this.anims.exists(animation.key)) continue;
+            this.anims.create({
+              key: animation.key,
+              frames: this.anims.generateFrameNumbers(entry.key, {
+                start: animation.start,
+                end: animation.end,
+              }),
+              frameRate: animation.frameRate,
+              repeat: animation.repeat,
+              yoyo: Boolean(animation.yoyo),
+            });
+          }
+        }
+
+        configureCollisionRadii() {
+          const petRadius = this.artManifest.entities?.pet?.collisionRadius;
+          const beeRadius = this.artManifest.entities?.bee?.collisionRadius;
+          this.collisionRadii = {
+            pet: Number.isFinite(petRadius) && petRadius > 0 ? petRadius : C.petRadius,
+            bee: Number.isFinite(beeRadius) && beeRadius > 0 ? beeRadius : C.enemyRadius,
+          };
+        }
+
+        selectEntityEntry(role) {
+          const entity = this.artManifest.entities?.[role] || {};
+          const animated = role === 'pet' ? entity.idleSheet : entity.flySheet;
+          if (this.textureAvailable(animated)) return { entry: animated, tier: 'animated' };
+          if (this.textureAvailable(entity.static)) return { entry: entity.static, tier: 'static' };
+          return { entry: null, tier: 'fallback' };
+        }
+
+        createManifestVisual(entry) {
+          const visual = entry.type === 'spritesheet'
+            ? this.add.sprite(entry.offsetX || 0, entry.offsetY || 0, entry.key, 0)
+            : this.add.image(entry.offsetX || 0, entry.offsetY || 0, entry.key);
+          visual.setOrigin(entry.originX ?? 0.5, entry.originY ?? 0.5);
+          let scale = 1;
+          if (entry.targetHeight && entry.sourceSubjectHeight) {
+            scale = entry.targetHeight / entry.sourceSubjectHeight;
+          } else if (entry.targetWidth && entry.sourceSubjectWidth) {
+            scale = entry.targetWidth / entry.sourceSubjectWidth;
+          } else if (entry.targetWidth && visual.width) {
+            scale = entry.targetWidth / visual.width;
+          }
+          visual.setScale(scale);
+          visual.baseScale = scale;
+          visual.baseX = entry.offsetX || 0;
+          visual.baseY = entry.offsetY || 0;
+          if (entry.animation && visual.play) visual.play(entry.animation.key);
+          return visual;
+        }
+
+        renderArtDebug() {
+          const enabled = Boolean(this.artManifest?.debug);
+          this.debugLayer.clear();
+          this.debugLabel.setVisible(enabled);
+          if (!enabled || !this.pet) return;
+
+          const drawEntity = (root, radius, color) => {
+            this.debugLayer.lineStyle(1, color, 0.95);
+            this.debugLayer.strokeCircle(root.x, root.y, radius);
+            this.debugLayer.fillStyle(color, 1);
+            this.debugLayer.fillCircle(root.x, root.y, 2);
+            const bounds = root.visual.getBounds();
+            this.debugLayer.lineStyle(1, 0x4ecbff, 0.9);
+            this.debugLayer.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            const shadowBounds = root.shadow.shadowBounds;
+            if (shadowBounds) {
+              this.debugLayer.lineStyle(1, 0x1f3344, 0.8);
+              this.debugLayer.strokeRect(
+                root.x + shadowBounds.x,
+                root.y + shadowBounds.y,
+                shadowBounds.width,
+                shadowBounds.height,
+              );
+            }
+          };
+
+          drawEntity(this.pet, this.collisionRadii.pet, 0xff6570);
+          for (const enemy of this.enemies) drawEntity(enemy.display, this.collisionRadii.bee, 0xffb95c);
+          this.debugLabel.setText([
+            `pet: ${this.visualTiers.pet}`,
+            `bee: ${this.visualTiers.bee}`,
+            `background: ${this.visualTiers.background}`,
+            `failed: ${[...this.assetFailures].join(', ') || 'none'}`,
+          ]);
+        }
+
+        createShadow(role) {
+          const defaults = role === 'pet'
+            ? { width: 44, height: 12, offsetY: 31, alpha: 0.16 }
+            : { width: 22, height: 7, offsetY: 17, alpha: 0.12 };
+          const config = { ...defaults, ...(this.artManifest.entities?.[role]?.shadow || {}) };
+          const shadow = this.add.graphics();
+          shadow.fillStyle(COLORS.navy, config.alpha * 0.2);
+          shadow.fillEllipse(0, config.offsetY, config.width * 1.28, config.height * 1.35);
+          shadow.fillStyle(COLORS.navy, config.alpha * 0.45);
+          shadow.fillEllipse(0, config.offsetY, config.width * 1.08, config.height * 1.08);
+          shadow.fillStyle(COLORS.navy, config.alpha * 0.72);
+          shadow.fillEllipse(0, config.offsetY, config.width * 0.82, config.height * 0.76);
+          shadow.baseAlpha = 1;
+          shadow.shadowBounds = {
+            x: -config.width / 2,
+            y: config.offsetY - config.height / 2,
+            width: config.width,
+            height: config.height,
+          };
+          return shadow;
+        }
+
+        createPetFallbackVisual() {
+          const art = this.add.graphics();
+          art.fillStyle(0x7fcdff, 1);
+          art.fillTriangle(-24, -17, -12, -37, -4, -16);
+          art.fillTriangle(24, -17, 12, -37, 4, -16);
+          art.fillStyle(COLORS.blueLight, 1);
+          art.fillCircle(0, 0, C.petRadius);
+          art.lineStyle(4, COLORS.blue, 1);
+          art.strokeCircle(0, 0, C.petRadius);
+          art.fillStyle(COLORS.ink, 1);
+          art.fillCircle(-9, -4, 3);
+          art.fillCircle(9, -4, 3);
+          art.fillCircle(0, 5, 3);
+          art.lineStyle(2, COLORS.ink, 1);
+          art.beginPath();
+          art.arc(0, 7, 8, 0.35, Math.PI - 0.35, false);
+          art.strokePath();
+          art.baseScale = 1;
+          art.baseX = 0;
+          art.baseY = 0;
+          return art;
+        }
+
+        drawBackground() {
+          const meadow = this.artManifest.environment?.meadow;
+          const hasMeadow = this.textureAvailable(meadow);
+          if (hasMeadow) {
+            const image = this.add.image(C.width / 2, C.height / 2, meadow.key).setDepth(0);
+            const scale = Math.max(C.width / image.width, C.height / image.height);
+            image.setScale(scale);
+            this.visualTiers.background = 'image';
+          }
+          const background = this.add.graphics().setDepth(0);
+          background.fillStyle(COLORS.field, hasMeadow ? 0.025 : 1);
+          background.fillRect(0, 0, C.width, C.height);
+          if (!hasMeadow) {
+            background.fillStyle(COLORS.fieldDark, 0.18);
+            for (let row = 0; row < 9; row += 1) {
+              for (let column = 0; column < 6; column += 1) {
+                const x = 28 + column * 63 + (row % 2) * 17;
+                const y = 74 + row * 69;
+                background.fillCircle(x, y, 2 + ((row + column) % 3));
+              }
+            }
+            background.fillStyle(COLORS.white, 0.35);
+            for (const flower of [[39, 132], [315, 176], [62, 456], [301, 521], [95, 576]]) {
+              background.fillCircle(flower[0] - 3, flower[1], 3);
+              background.fillCircle(flower[0] + 3, flower[1], 3);
+              background.fillCircle(flower[0], flower[1] - 3, 3);
+              background.fillCircle(flower[0], flower[1] + 3, 3);
+              background.fillStyle(COLORS.amber, 0.75);
+              background.fillCircle(flower[0], flower[1], 2);
+              background.fillStyle(COLORS.white, 0.35);
+            }
+          }
+          const vignette = this.add.graphics().setDepth(1);
+          vignette.lineStyle(20, COLORS.navy, 0.08);
+          vignette.strokeRect(-7, -7, C.width + 14, C.height + 14);
+        }
+
+        createPet() {
+          const configuredPosition = this.artManifest.entities?.pet?.position || {};
+          const homeX = configuredPosition.x ?? C.width / 2;
+          const homeY = configuredPosition.y ?? C.height / 2 + 14;
+          const pet = this.add.container(homeX, homeY).setDepth(18);
+          const shadow = this.createShadow('pet');
+          const selection = this.selectEntityEntry('pet');
+          const visual = selection.entry
+            ? this.createManifestVisual(selection.entry)
+            : this.createPetFallbackVisual();
+          pet.add([shadow, visual]);
+          pet.shadow = shadow;
+          pet.visual = visual;
+          pet.artTier = selection.tier;
+          pet.homeX = homeX;
+          pet.homeY = homeY;
+          this.visualTiers.pet = selection.tier;
+
+          if (selection.tier !== 'animated') {
+            this.tweens.add({
+              targets: visual,
+              scaleY: visual.baseScale * 1.026,
+              scaleX: visual.baseScale * 0.992,
+              y: visual.baseY - 1.5,
+              duration: 1080,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.inOut',
+            });
+          }
+          this.tweens.add({
+            targets: shadow,
+            scaleX: 0.92,
+            scaleY: 0.9,
+            alpha: shadow.baseAlpha * 0.8,
+            duration: 1080,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.inOut',
+          });
+          return pet;
+        }
+
+        createUiImage(entry, x, y) {
+          if (!this.textureAvailable(entry)) return null;
+          const image = this.add.image(x, y, entry.key);
+          if (entry.displayWidth && entry.displayHeight) {
+            image.setDisplaySize(entry.displayWidth, entry.displayHeight);
+          } else if (entry.displayWidth) {
+            image.setScale(entry.displayWidth / Math.max(1, image.width));
+          }
+          return image;
+        }
+
+        createPanelVisual(x, y, width, height, radius, accentColor) {
+          const entry = this.artManifest.ui?.panel;
+          const image = this.createUiImage(entry, x, y);
+          if (image) return image.setDisplaySize(width, height);
+
+          const panel = this.add.graphics();
+          panel.fillStyle(0x173b55, 0.97);
+          panel.fillRoundedRect(x - width / 2, y - height / 2, width, height, radius);
+          panel.lineStyle(2, accentColor, 0.5);
+          panel.strokeRoundedRect(x - width / 2, y - height / 2, width, height, radius);
+          return panel;
+        }
+
+        createStartCardDecorations() {
+          const decorations = this.add.container(0, 0);
+          const base = this.add.graphics();
+          base.fillStyle(COLORS.mintLight, 0.08);
+          base.fillRoundedRect(78, 132, 204, 252, 42);
+          base.lineStyle(2, COLORS.cream, 0.18);
+          base.strokeRoundedRect(78, 132, 204, 252, 42);
+
+          const drawPaw = (x, y, scale = 1) => {
+            base.fillStyle(COLORS.cream, 0.26);
+            base.fillEllipse(x, y + 4 * scale, 15 * scale, 11 * scale);
+            base.fillCircle(x - 6 * scale, y - 5 * scale, 3.5 * scale);
+            base.fillCircle(x, y - 8 * scale, 3.7 * scale);
+            base.fillCircle(x + 6 * scale, y - 5 * scale, 3.5 * scale);
+          };
+          drawPaw(99, 247, 0.8);
+          drawPaw(266, 344, 0.72);
+          decorations.add(base);
+
+          const twinkles = [];
+          for (const [x, y, scale, delay] of [
+            [99, 174, 0.82, 0],
+            [260, 202, 0.62, 240],
+            [105, 351, 0.56, 480],
+            [263, 271, 0.72, 720],
+          ]) {
+            const star = this.add.graphics().setPosition(x, y).setScale(scale);
+            star.fillStyle(COLORS.cream, 0.92);
+            star.fillCircle(0, 0, 2.4);
+            star.fillTriangle(0, -8, -2.5, -1.5, 2.5, -1.5);
+            star.fillTriangle(0, 8, -2.5, 1.5, 2.5, 1.5);
+            star.fillTriangle(-8, 0, -1.5, -2.5, -1.5, 2.5);
+            star.fillTriangle(8, 0, 1.5, -2.5, 1.5, 2.5);
+            star.setAlpha(0.45);
+            decorations.add(star);
+            twinkles.push(star);
+            this.tweens.add({
+              targets: star,
+              alpha: 0.95,
+              scale: scale * 1.12,
+              duration: 780,
+              delay,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.inOut',
+            });
+          }
+          decorations.twinkles = twinkles;
+          return decorations;
+        }
+
+        createStartMascot() {
+          const mascot = this.add.container(C.width / 2, 306);
+          const shadow = this.add.ellipse(0, 103, 120, 20, COLORS.navy, 0.19);
+          const portraitEntry = this.artManifest.ui?.startPetHappy;
+          let visual;
+          let scale;
+          if (this.textureAvailable(portraitEntry)) {
+            visual = this.add.image(0, 0, portraitEntry.key).setAlpha(0.96);
+            scale = (portraitEntry.displayHeight || 230) / Math.max(1, visual.height);
+          } else {
+            const selection = this.selectEntityEntry('pet');
+            visual = selection.entry
+              ? this.createManifestVisual(selection.entry)
+              : this.createPetFallbackVisual();
+            scale = (visual.baseScale || 1) * (selection.entry ? 1.28 : 1.05);
+          }
+          visual.setScale(scale);
+          visual.baseScale = scale;
+          mascot.add([shadow, visual]);
+          mascot.visual = visual;
+          this.tweens.add({
+            targets: visual,
+            y: (visual.baseY || 0) - 2,
+            scaleX: scale * 0.985,
+            scaleY: scale * 1.025,
+            duration: 1080,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.inOut',
+          });
+          return mascot;
+        }
+
+        createResultPortrait() {
+          const portrait = this.add.container(0, 10);
+          const portraitEntry = this.artManifest.ui?.resultPetHurt;
+          let visual;
+          let scale;
+          if (this.textureAvailable(portraitEntry)) {
+            visual = this.add.image(0, 0, portraitEntry.key).setAlpha(0.8);
+            scale = (portraitEntry.displayHeight || 235) / Math.max(1, visual.height);
+          } else {
+            const selection = this.selectEntityEntry('pet');
+            visual = selection.entry
+              ? this.createManifestVisual(selection.entry)
+              : this.createPetFallbackVisual();
+            scale = (visual.baseScale || 1) * 1.3;
+            visual.setAlpha(0.72);
+          }
+          visual.setScale(scale);
+          visual.baseScale = scale;
+          portrait.add(visual);
+          portrait.visual = visual;
+          this.tweens.add({
+            targets: visual,
+            y: 2,
+            scaleX: scale * 1.01,
+            scaleY: scale * 0.99,
+            duration: 1250,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.inOut',
+          });
+          return portrait;
+        }
+
+        createSharpText(x, y, content, style) {
+          return this.add.text(Math.round(x), Math.round(y), content, {
+            fontFamily: UI_FONT,
+            ...style,
+          })
+            .setResolution(UI_RESOLUTION)
+            .setScale(1 / UI_RESOLUTION);
+        }
+
+        fitTextToWidth(text, maxWidth, baseFontSize, minFontSize = 10) {
+          let fontSize = Math.max(minFontSize, Math.round(baseFontSize));
+          text.setFontSize(fontSize);
+          while (text.width > maxWidth && fontSize > minFontSize) {
+            fontSize -= 1;
+            text.setFontSize(fontSize);
+          }
+          return text;
+        }
+
+        createFittedText(x, y, content, style, maxWidth, minFontSize = 10) {
+          const baseFontSize = Number.parseFloat(style.fontSize) || 16;
+          const text = this.createSharpText(x, y, content, style);
+          text.fitTextConfig = { maxWidth, baseFontSize, minFontSize };
+          return this.fitTextToWidth(text, maxWidth, baseFontSize, minFontSize);
+        }
+
+        setFittedText(text, content) {
+          text.setText(content);
+          const fit = text.fitTextConfig;
+          if (fit) {
+            this.fitTextToWidth(text, fit.maxWidth, fit.baseFontSize, fit.minFontSize);
+          }
+          this.refreshTextAnchor(text);
+          return text;
+        }
+
+        setTextAnchor(text, x, y, anchorX = 0, anchorY = 0) {
+          text.textAnchorConfig = { x, y, anchorX, anchorY };
+          return this.refreshTextAnchor(text);
+        }
+
+        refreshTextAnchor(text) {
+          const anchor = text.textAnchorConfig;
+          if (!anchor) return text;
+          text.setOrigin(0, 0);
+          text.setPosition(
+            Math.round(anchor.x - text.width * anchor.anchorX),
+            Math.round(anchor.y - text.height * anchor.anchorY),
+          );
+          return text;
+        }
+
+        setHudVisible(visible) {
+          for (const item of this.hudItems || []) item.setVisible(visible);
+        }
+
+        createInterface() {
+          const titleStyle = {
+            fontStyle: 'bold',
+            color: '#f5fcff',
+            stroke: '#17324d',
+            strokeThickness: 6,
+            align: 'center',
+          };
+          const bodyStyle = {
+            color: '#d9eff8',
+            align: 'center',
+          };
+
+          const hudBackground = this.add.graphics().setDepth(34);
+          hudBackground.fillStyle(COLORS.navy, 0.86);
+          hudBackground.fillRoundedRect(16, 14, 328, 76, 18);
+          hudBackground.lineStyle(2, COLORS.white, 0.18);
+          hudBackground.strokeRoundedRect(16, 14, 328, 76, 18);
+          this.timeLabel = this.createFittedText(39, 27, 'TIME  00:00', {
+            ...bodyStyle,
+            fontSize: '16px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+          }, 132, 12);
+          this.setTextAnchor(this.timeLabel, 39, 27).setDepth(35);
+          this.scoreLabel = this.createFittedText(321, 27, 'SCORE  0', {
+            ...bodyStyle,
+            fontSize: '16px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+          }, 132, 12);
+          this.setTextAnchor(this.scoreLabel, 321, 27, 1, 0).setDepth(35);
+
+          this.shieldTimerLabel = this.createFittedText(C.width / 2, 62, 'SHIELD  --', {
+            ...bodyStyle,
+            fontSize: '12px',
+            fontStyle: 'bold',
+            color: '#a9eaff',
+          }, 172, 10);
+          this.setTextAnchor(this.shieldTimerLabel, C.width / 2, 62, 0.5, 0.5).setDepth(35);
+          this.hudItems = [
+            hudBackground,
+            this.timeLabel,
+            this.scoreLabel,
+            this.shieldTimerLabel,
+          ];
+
+          this.lengthText = this.createFittedText(C.width / 2, 548, 'SHIELD 100%', {
+            ...bodyStyle,
+            fontSize: '12px',
+            fontStyle: 'bold',
+            color: '#e9fbff',
+            backgroundColor: '#17324dcc',
+            padding: { x: 10, y: 6 },
+          }, 300, 10);
+          this.setTextAnchor(this.lengthText, C.width / 2, 548, 0.5, 0.5)
+            .setDepth(36)
+            .setVisible(false);
+
+          this.pauseText = this.createFittedText(C.width / 2, C.height / 2 - 80, 'PAUSED', {
+            ...titleStyle,
+            fontSize: '34px',
+            backgroundColor: '#102c45dd',
+            padding: { x: 22, y: 12 },
+          }, 280, 20);
+          this.setTextAnchor(this.pauseText, C.width / 2, C.height / 2 - 80, 0.5, 0.5)
+            .setDepth(80)
+            .setVisible(false);
+
+          this.startOverlay = this.add.container(0, 0).setDepth(60);
+          const startBackdrop = this.add.graphics();
+          startBackdrop.fillStyle(COLORS.navy, 0.58);
+          startBackdrop.fillRect(0, 0, C.width, C.height);
+          const startPanel = this.createPanelVisual(
+            C.width / 2,
+            305,
+            300,
+            390,
+            28,
+            COLORS.blueGlow,
+          );
+          const startDecorations = this.createStartCardDecorations();
+          const startMascot = this.createStartMascot();
+          const startTitle = this.createFittedText(C.width / 2, 174, 'PET SHIELD', {
+            ...titleStyle,
+            fontSize: '36px',
+            color: '#fff2b8',
+            strokeThickness: 4,
+          }, 270, 30);
+          this.setTextAnchor(startTitle, C.width / 2, 174, 0.5, 0.5);
+          const startButton = this.makeButton(C.width / 2, 412, 'START', () => this.startRun());
+          const startContent = this.add.container(0, 14);
+          startContent.add([
+            startDecorations,
+            startMascot,
+            startTitle,
+            startButton,
+          ]);
+          this.startOverlay.add([
+            startBackdrop,
+            startPanel,
+            startContent,
+          ]);
+
+          this.gameOverOverlay = this.add.container(0, 0).setDepth(70).setVisible(false);
+          const resultBackdrop = this.add.graphics();
+          resultBackdrop.fillStyle(COLORS.navy, 0.66);
+          resultBackdrop.fillRect(0, 0, C.width, C.height);
+          const resultPanel = this.createPanelVisual(
+            C.width / 2,
+            320,
+            300,
+            388,
+            28,
+            COLORS.red,
+          );
+          const resultContent = this.add.container(C.width / 2, 320);
+          const resultPortrait = this.createResultPortrait();
+          const resultInfoBacking = this.add.graphics();
+          resultInfoBacking.fillStyle(COLORS.navy, 0.56);
+          resultInfoBacking.fillRoundedRect(-108, -82, 216, 128, 22);
+          resultInfoBacking.lineStyle(1.5, COLORS.cream, 0.16);
+          resultInfoBacking.strokeRoundedRect(-108, -82, 216, 128, 22);
+          const gameOverTitle = this.createFittedText(0, -131, 'GAME OVER', {
+            ...titleStyle,
+            fontSize: '28px',
+            color: '#ff8c91',
+            strokeThickness: 3,
+          }, 250, 22);
+          this.setTextAnchor(gameOverTitle, 0, -131, 0.5, 0.5);
+          this.resultText = this.createFittedText(0, -28, 'TIME  00:00\nSCORE  0\nBEST  0', {
+            ...bodyStyle,
+            fontSize: '20px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+            lineSpacing: 14,
+          }, 250, 14);
+          this.setTextAnchor(this.resultText, 0, -28, 0.5, 0.5);
+          const restartButton = this.makeButton(
+            0,
+            112,
+            'TRY AGAIN',
+            () => this.startRun(),
+            { textOffsetY: 0 },
+          );
+          resultContent.add([
+            resultPortrait,
+            resultInfoBacking,
+            gameOverTitle,
+            this.resultText,
+            restartButton,
+          ]);
+          this.gameOverOverlay.add([
+            resultBackdrop,
+            resultPanel,
+            resultContent,
+          ]);
+        }
+
+        makeButton(x, y, label, callback, options = {}) {
+          const button = this.add.container(x, y);
+          const entry = this.artManifest.ui?.startButton;
+          const textOffsetY = options.textOffsetY ?? entry?.textOffsetY ?? -3;
+          let background = this.createUiImage(entry, 0, 0);
+          if (!background) {
+            background = this.add.graphics();
+            background.fillStyle(COLORS.blue, 1);
+            background.fillRoundedRect(-92, -27, 184, 54, 18);
+            background.lineStyle(3, COLORS.blueLight, 0.72);
+            background.strokeRoundedRect(-92, -27, 184, 54, 18);
+          }
+          const text = this.createFittedText(0, textOffsetY, label, {
+            fontSize: '21px',
+            fontStyle: 'bold',
+            color: '#fff8df',
+            stroke: '#284a67',
+            strokeThickness: 3,
+          }, entry?.textMaxWidth || 156, 14);
+          this.setTextAnchor(text, 0, textOffsetY, 0.5, 0.5);
+          button.add([background, text]);
+          button.setSize(entry?.hitWidth || 184, entry?.hitHeight || 54)
+            .setInteractive({ useHandCursor: true });
+          button.on('pointerover', () => button.setScale(1.035));
+          button.on('pointerout', () => button.setScale(1));
+          button.on('pointerdown', () => button.setScale(0.97));
+          button.on('pointerup', () => {
+            button.setScale(1.035);
+            callback();
+          });
+          return button;
+        }
+
+        bindInput() {
+          this.input.on('pointerdown', (pointer) => this.beginDrawing(pointer));
+          this.input.on('pointermove', (pointer) => this.continueDrawing(pointer));
+          this.input.on('pointerup', (pointer) => this.finishDrawing(pointer));
+          this.input.on('pointerupoutside', (pointer) => this.finishDrawing(pointer));
+          this.input.on('gameout', () => this.finishDrawing());
+          const canvas = this.game.canvas;
+          canvas.addEventListener('pointercancel', () => this.finishDrawing(), { passive: true });
+          canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+        }
+
+        enterReady() {
+          this.runState = 'ready';
+          this.setHudVisible(false);
+          this.startOverlay.setVisible(true);
+          this.gameOverOverlay.setVisible(false);
+          this.lengthText.setVisible(false);
+          this.updateHud();
+        }
+
+        readOnboardingComplete() {
+          try {
+            return localStorage.getItem('pet-shield-onboarding-v1') === '1';
+          } catch (_error) {
+            return Boolean(this.onboardingSessionComplete);
+          }
+        }
+
+        writeOnboardingComplete() {
+          this.onboardingSessionComplete = true;
+          try {
+            localStorage.setItem('pet-shield-onboarding-v1', '1');
+          } catch (_error) {
+            // Session state is sufficient when storage is unavailable.
+          }
+        }
+
+        createTutorialHand() {
+          const hand = this.add.container(0, 0);
+          const shadow = this.add.ellipse(2, 17, 25, 9, COLORS.navy, 0.18);
+          const glow = this.add.circle(0, -4, 18, COLORS.mint, 0.16)
+            .setStrokeStyle(2, COLORS.mintLight, 0.42);
+          const art = this.add.graphics();
+          art.lineStyle(3, COLORS.cream, 0.98);
+          art.fillStyle(COLORS.peach, 1);
+          art.fillRoundedRect(-8, -23, 16, 36, 8);
+          art.strokeRoundedRect(-8, -23, 16, 36, 8);
+          art.fillCircle(0, 11, 13);
+          art.strokeCircle(0, 11, 13);
+          art.fillEllipse(10, 5, 10, 16);
+          art.strokeEllipse(10, 5, 10, 16);
+          art.fillStyle(COLORS.mint, 1);
+          art.fillRoundedRect(-11, 15, 22, 11, 5);
+          art.lineStyle(2, COLORS.cream, 0.95);
+          art.strokeRoundedRect(-11, 15, 22, 11, 5);
+          art.lineStyle(1.5, COLORS.rose, 0.72);
+          art.beginPath();
+          art.moveTo(-4, 6);
+          art.lineTo(4, 7);
+          art.strokePath();
+          const fingertip = this.add.graphics().setPosition(0, -27);
+          fingertip.fillStyle(COLORS.cream, 0.96);
+          fingertip.fillCircle(0, 0, 2.2);
+          fingertip.fillTriangle(0, -6, -2, -1, 2, -1);
+          fingertip.fillTriangle(0, 6, -2, 1, 2, 1);
+          fingertip.fillTriangle(-6, 0, -1, -2, -1, 2);
+          fingertip.fillTriangle(6, 0, 1, -2, 1, 2);
+          hand.add([shadow, glow, art, fingertip]);
+          this.tweens.add({
+            targets: fingertip,
+            alpha: 0.42,
+            scale: 0.72,
+            duration: 420,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.inOut',
+          });
+          return hand;
+        }
+
+        createTutorialBee() {
+          const selection = this.selectEntityEntry('bee');
+          const visual = selection.entry
+            ? this.createManifestVisual(selection.entry)
+            : this.createBeeFallbackVisual();
+          visual.setAlpha(0);
+          return visual;
+        }
+
+        renderTutorialGhost(progress) {
+          if (!this.onboardingGhost || !this.onboardingHand) return;
+          const sample = Core.samplePolyline(this.onboardingPath, progress);
+          this.renderPolyline(
+            this.onboardingGhost,
+            sample.visiblePoints,
+            0.72,
+          );
+          this.onboardingHand.setPosition(sample.point.x, sample.point.y);
+        }
+
+        showTutorialSuccess() {
+          if (!this.onboardingLayer) return;
+          const pieces = [];
+          for (let index = 0; index < 6; index += 1) {
+            const angle = index / 6 * Math.PI * 2;
+            const piece = this.add.circle(
+              this.pet.x,
+              this.pet.y - 14,
+              index % 2 === 0 ? 4 : 3,
+              index % 2 === 0 ? COLORS.cream : COLORS.blueGlow,
+              0.9,
+            );
+            piece.successX = this.pet.x + Math.cos(angle) * 34;
+            piece.successY = this.pet.y - 14 + Math.sin(angle) * 27;
+            pieces.push(piece);
+            this.onboardingLayer.add(piece);
+          }
+          this.tweens.add({
+            targets: pieces,
+            x: (target) => target.successX,
+            y: (target) => target.successY,
+            scale: 0.3,
+            alpha: 0,
+            duration: 520,
+            ease: 'Quad.out',
+          });
+        }
+
+        showTutorialImpact(x, y) {
+          if (!this.onboardingLayer) return;
+          const sparkEntry = this.artManifest.effects?.hitSpark;
+          let impact;
+          if (this.textureAvailable(sparkEntry)) {
+            impact = this.add.image(x, y, sparkEntry.key);
+            const scale = (sparkEntry.targetWidth || 38) / Math.max(1, impact.width);
+            impact.setScale(scale * 0.48).setAlpha(0.9).setAngle(-8);
+            impact.targetScale = scale * 1.05;
+          } else {
+            impact = this.add.circle(x, y, 9, COLORS.white, 0.12)
+              .setStrokeStyle(3, COLORS.white, 0.92);
+            impact.targetScale = 2.1;
+          }
+          this.onboardingLayer.add(impact);
+          this.tweens.add({
+            targets: impact,
+            scale: impact.targetScale,
+            angle: 18,
+            alpha: 0,
+            duration: 240,
+            ease: 'Quad.out',
+          });
+        }
+
+        startOnboardingIfEligible() {
+          if (this.runState !== 'playing' || this.readOnboardingComplete()) return;
+          this.finishOnboarding(false);
+          this.onboardingActive = true;
+          this.onboardingProgress.value = 0;
+          this.onboardingPath = [
+            { x: this.pet.x - 56, y: this.pet.y - 54 },
+            { x: this.pet.x - 89, y: this.pet.y - 28 },
+            { x: this.pet.x - 94, y: this.pet.y + 32 },
+            { x: this.pet.x - 59, y: this.pet.y + 67 },
+            { x: this.pet.x + 8, y: this.pet.y + 77 },
+            { x: this.pet.x + 64, y: this.pet.y + 48 },
+            { x: this.pet.x + 78, y: this.pet.y + 2 },
+          ];
+
+          this.onboardingLayer = this.add.container(0, 0).setDepth(38);
+          this.onboardingGhost = this.add.graphics();
+          this.onboardingHand = this.createTutorialHand().setAlpha(0);
+          this.onboardingDemoBee = this.createTutorialBee()
+            .setPosition(C.width + 26, this.pet.y + 4);
+          this.onboardingLayer.add([
+            this.onboardingGhost,
+            this.onboardingDemoBee,
+            this.onboardingHand,
+          ]);
+          this.renderTutorialGhost(0);
+
+          this.tweens.add({
+            targets: this.onboardingHand,
+            alpha: 1,
+            duration: 300,
+            ease: 'Quad.out',
+          });
+          this.tweens.add({
+            targets: this.onboardingProgress,
+            value: 1,
+            delay: 300,
+            duration: 1500,
+            ease: 'Sine.inOut',
+            onUpdate: () => this.renderTutorialGhost(this.onboardingProgress.value),
+          });
+
+          this.onboardingTimers.push(this.time.delayedCall(1800, () => {
+            if (!this.onboardingActive || !this.onboardingDemoBee) return;
+            const contact = this.onboardingPath[this.onboardingPath.length - 1];
+            this.onboardingDemoBee.setAlpha(1);
+            this.tweens.add({
+              targets: this.onboardingDemoBee,
+              x: contact.x + 8,
+              y: contact.y,
+              angle: -8,
+              duration: 500,
+              ease: 'Sine.in',
+              onComplete: () => {
+                if (!this.onboardingActive || !this.onboardingDemoBee) return;
+                this.showTutorialImpact(contact.x, contact.y);
+                this.tweens.add({
+                  targets: this.onboardingDemoBee,
+                  x: contact.x + 53,
+                  y: contact.y - 18,
+                  angle: 12,
+                  alpha: 0.28,
+                  duration: 280,
+                  ease: 'Quad.out',
+                });
+              },
+            });
+          }));
+
+          this.onboardingTimers.push(this.time.delayedCall(2400, () => {
+            if (!this.onboardingActive) return;
+            this.showTutorialSuccess();
+            this.tweens.add({
+              targets: this.pet,
+              y: this.pet.homeY - 7,
+              scaleX: 1.04,
+              scaleY: 0.96,
+              duration: 180,
+              yoyo: true,
+              ease: 'Quad.out',
+            });
+          }));
+
+          this.onboardingTimers.push(this.time.addEvent({
+            delay: 3000,
+            callback: () => this.finishOnboarding(true),
+          }));
+        }
+
+        finishOnboarding(markComplete) {
+          if (!this.onboardingActive && !this.onboardingLayer) return;
+          if (markComplete) this.writeOnboardingComplete();
+          this.onboardingActive = false;
+          for (const timer of this.onboardingTimers) timer.remove(false);
+          this.onboardingTimers.length = 0;
+          this.tweens.killTweensOf(this.onboardingProgress);
+          this.tweens.killTweensOf(this.onboardingHand);
+          this.tweens.killTweensOf(this.onboardingDemoBee);
+          this.tweens.killTweensOf(this.pet);
+          this.pet.setPosition(this.pet.homeX, this.pet.homeY).setScale(1);
+          if (this.onboardingLayer) {
+            for (const child of this.onboardingLayer.list) this.tweens.killTweensOf(child);
+            this.onboardingLayer.destroy(true);
+          }
+          this.onboardingLayer = null;
+          this.onboardingGhost = null;
+          this.onboardingHand = null;
+          this.onboardingDemoBee = null;
+        }
+
+        startRun() {
+          if (this.runState === 'playing') return;
+          this.resetRun();
+          this.setHudVisible(true);
+          this.startOverlay.setVisible(false);
+          this.gameOverOverlay.setVisible(false);
+          this.beginPlaying();
+        }
+
+        beginPlaying() {
+          this.runState = 'playing';
+          this.spawnAccumulator = 850;
+          this.startOnboardingIfEligible();
+        }
+
+        resetRun() {
+          this.finishOnboarding(false);
+          this.clearFadingShields();
+          this.releaseAllEnemies();
+          this.elapsedSeconds = 0;
+          this.score = 0;
+          this.bonusScore = 0;
+          this.spawnAccumulator = 0;
+          this.shieldPoints = [];
+          this.shieldTimeRemaining = 0;
+          this.previewPoints = [];
+          this.previewLength = 0;
+          this.loopGuardArmed = false;
+          this.loopGuardLocked = false;
+          this.drawing = false;
+          this.drawingPointerId = null;
+          this.tweens.killTweensOf(this.shieldReveal);
+          this.shieldReveal.alpha = 1;
+          this.committedShield.clear().setAlpha(1);
+          this.previewShield.clear();
+          this.impactLayer.clear();
+          this.lengthText.setVisible(false);
+          this.pauseText.setVisible(false);
+          this.pet.setPosition(this.pet.homeX, this.pet.homeY).setAlpha(1);
+          if (this.pet.hurtVisual) {
+            this.pet.hurtVisual.destroy();
+            this.pet.hurtVisual = null;
+          }
+          this.pet.visual
+            .setVisible(true)
+            .setAlpha(1)
+            .setPosition(this.pet.visual.baseX, this.pet.visual.baseY)
+            .setScale(this.pet.visual.baseScale)
+            .setRotation(0);
+          this.pet.shadow.setScale(1).setAlpha(this.pet.shadow.baseAlpha);
+          this.updateHud();
+        }
+
+        beginDrawing(pointer) {
+          if (this.onboardingActive) this.finishOnboarding(true);
+          if (this.runState !== 'playing' || this.isPagePaused || this.drawing) return;
+          if (pointer.rightButtonDown && pointer.rightButtonDown()) return;
+          const point = this.pointerPoint(pointer);
+          this.drawing = true;
+          this.drawingPointerId = pointer.id;
+          this.previewPoints = [point];
+          this.previewLength = 0;
+          this.loopGuardArmed = false;
+          this.loopGuardLocked = false;
+          this.setFittedText(this.lengthText, 'SHIELD 100%').setVisible(true);
+          this.renderPreview();
+        }
+
+        continueDrawing(pointer) {
+          if (!this.drawing || pointer.id !== this.drawingPointerId) return;
+          this.acceptPointerPoint(this.pointerPoint(pointer), C.shieldSampleDistance);
+        }
+
+        acceptPointerPoint(point, minimumDistance) {
+          if (this.loopGuardLocked) return;
+          const last = this.previewPoints[this.previewPoints.length - 1];
+          if (!last || Core.distance(last, point) < minimumDistance) return;
+          let guardedPoint = point;
+          if (this.loopGuardArmed) {
+            const entry = Core.segmentCircleEntry(
+              last,
+              point,
+              this.previewPoints[0],
+              C.shieldLoopGuardRadius,
+            );
+            if (entry.hit) {
+              guardedPoint = entry.point;
+              this.loopGuardLocked = true;
+            }
+          }
+          const remaining = C.shieldMaxLength - this.previewLength;
+          const clipped = Core.clipStrokePoint(last, guardedPoint, remaining);
+          if (!clipped.accepted) return;
+          this.previewPoints.push(clipped.point);
+          this.previewLength += clipped.used;
+          if (
+            !this.loopGuardArmed
+            && this.previewLength >= C.shieldLoopGuardStartLength
+            && Core.distance(this.previewPoints[0], clipped.point) >= C.shieldLoopGuardRadius
+          ) {
+            this.loopGuardArmed = true;
+          }
+          this.renderPreview();
+          const percent = Math.max(0, Math.round((remaining - clipped.used) / C.shieldMaxLength * 100));
+          const guardStatus = this.loopGuardLocked
+            ? ' · LOOP BLOCKED'
+            : this.loopGuardArmed
+              ? ' · KEEP GAP'
+              : '';
+          this.setFittedText(this.lengthText, `SHIELD ${percent}%${guardStatus}`);
+          this.emitShieldParticle(clipped.point);
+        }
+
+        finishDrawing(pointer) {
+          if (!this.drawing) return;
+          if (pointer && pointer.id !== this.drawingPointerId) return;
+          if (pointer) this.acceptPointerPoint(this.pointerPoint(pointer), 2);
+          if (this.previewPoints.length >= 2 && this.previewLength >= 2) {
+            this.fadePreviousShield();
+            this.shieldPoints = this.previewPoints.map((point) => ({ x: point.x, y: point.y }));
+            this.shieldTimeRemaining = C.shieldDuration;
+            this.renderPolyline(this.committedShield, this.shieldPoints, 1);
+            this.animateShieldAppear();
+            this.updateShieldHud();
+          }
+          this.drawing = false;
+          this.drawingPointerId = null;
+          this.previewPoints = [];
+          this.previewLength = 0;
+          this.loopGuardArmed = false;
+          this.loopGuardLocked = false;
+          this.previewShield.clear();
+          this.lengthText.setVisible(false);
+        }
+
+        pointerPoint(pointer) {
+          const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+          return {
+            x: Core.clamp(worldPoint.x, 0, C.width),
+            y: Core.clamp(worldPoint.y, 0, C.height),
+          };
+        }
+
+        renderPreview() {
+          this.renderPolyline(this.previewShield, this.previewPoints, 0.78);
+        }
+
+        fadePreviousShield() {
+          if (this.shieldPoints.length < 2) return;
+          const fading = this.add.graphics().setDepth(21);
+          this.renderPolyline(fading, this.shieldPoints, 1);
+          fading.setAlpha(this.committedShield.alpha);
+          this.fadingShieldVisuals.add(fading);
+          this.tweens.add({
+            targets: fading,
+            alpha: 0,
+            duration: 480,
+            ease: 'Sine.out',
+            onComplete: () => {
+              this.fadingShieldVisuals.delete(fading);
+              fading.destroy();
+            },
+          });
+        }
+
+        clearFadingShields() {
+          for (const fading of this.fadingShieldVisuals) {
+            this.tweens.killTweensOf(fading);
+            fading.destroy();
+          }
+          this.fadingShieldVisuals.clear();
+        }
+
+        renderPolyline(graphics, points, alpha) {
+          graphics.clear();
+          if (points.length < 2) return;
+          const stroke = (width, color, strokeAlpha) => {
+            graphics.lineStyle(width, color, strokeAlpha * alpha);
+            graphics.beginPath();
+            graphics.moveTo(points[0].x, points[0].y);
+            for (let index = 1; index < points.length; index += 1) {
+              graphics.lineTo(points[index].x, points[index].y);
+            }
+            graphics.strokePath();
+          };
+          stroke(16, COLORS.mint, 0.2);
+          stroke(10, COLORS.blueLight, 0.56);
+          stroke(6, COLORS.mintLight, 0.96);
+          stroke(2, COLORS.cream, 0.92);
+          graphics.fillStyle(COLORS.mint, 0.34 * alpha);
+          graphics.fillCircle(points[0].x, points[0].y, 6);
+          graphics.fillStyle(COLORS.cream, 0.94 * alpha);
+          graphics.fillCircle(points[0].x, points[0].y, 2.6);
+          const last = points[points.length - 1];
+          graphics.fillStyle(COLORS.mint, 0.34 * alpha);
+          graphics.fillCircle(last.x, last.y, 6);
+          graphics.fillStyle(COLORS.cream, 0.94 * alpha);
+          graphics.fillCircle(last.x, last.y, 2.6);
+          graphics.lineStyle(1.5, COLORS.cream, 0.72 * alpha);
+          graphics.beginPath();
+          graphics.moveTo(last.x - 7, last.y);
+          graphics.lineTo(last.x + 7, last.y);
+          graphics.moveTo(last.x, last.y - 7);
+          graphics.lineTo(last.x, last.y + 7);
+          graphics.strokePath();
+        }
+
+        animateShieldAppear() {
+          this.tweens.killTweensOf(this.shieldReveal);
+          this.shieldReveal.alpha = 0;
+          this.committedShield.setAlpha(0);
+          this.tweens.add({
+            targets: this.shieldReveal,
+            alpha: 1,
+            duration: 190,
+            ease: 'Quad.out',
+          });
+
+          const step = Math.max(1, Math.floor(this.shieldPoints.length / 7));
+          for (let index = 0; index < this.shieldPoints.length; index += step) {
+            this.emitShieldParticle(this.shieldPoints[index]);
+          }
+        }
+
+        emitShieldParticle(point) {
+          const entry = this.artManifest.effects?.shieldParticle;
+          if (!this.textureAvailable(entry)) return;
+          const particle = this.add.image(point.x, point.y, entry.key).setDepth(25);
+          const targetWidth = entry.targetWidth || 10;
+          const scale = targetWidth / Math.max(1, particle.width);
+          particle.setTint(COLORS.mintLight);
+          particle.setScale(scale).setAlpha(0.78);
+          this.tweens.add({
+            targets: particle,
+            y: particle.y - 8,
+            scale: scale * 0.3,
+            alpha: 0,
+            duration: 260,
+            ease: 'Quad.out',
+            onComplete: () => particle.destroy(),
+          });
+        }
+
+        updateShieldLifetime(deltaSeconds) {
+          if (this.shieldTimeRemaining <= 0 || this.shieldPoints.length < 2) return;
+          this.shieldTimeRemaining = Math.max(0, this.shieldTimeRemaining - deltaSeconds);
+          if (this.shieldTimeRemaining <= 0) {
+            this.shieldTimeRemaining = 0;
+            this.shieldPoints = [];
+            this.shieldReveal.alpha = 1;
+            this.committedShield.clear().setAlpha(1);
+            this.updateShieldHud();
+            return;
+          }
+          const lifetimeAlpha = this.shieldTimeRemaining <= C.shieldWarningDuration
+            ? 0.42 + 0.58 * (0.5 + 0.5 * Math.sin(this.shieldTimeRemaining * 16))
+            : 1;
+          this.committedShield.setAlpha(lifetimeAlpha * this.shieldReveal.alpha);
+          this.updateShieldHud();
+        }
+
+        updateShieldHud() {
+          if (!this.shieldTimerLabel) return;
+          if (this.shieldTimeRemaining > 0) {
+            this.setFittedText(
+              this.shieldTimerLabel,
+              `SHIELD  ${this.shieldTimeRemaining.toFixed(1)}s`,
+            );
+            this.shieldTimerLabel.setColor(
+              this.shieldTimeRemaining <= C.shieldWarningDuration ? '#ffcf75' : '#a9eaff',
+            );
+          } else {
+            this.setFittedText(this.shieldTimerLabel, 'SHIELD  --').setColor('#7899aa');
+          }
+        }
+
+        createBeeFallbackVisual() {
+          const visual = this.add.graphics();
+          visual.fillStyle(COLORS.white, 0.72);
+          visual.fillEllipse(-10, -4, 13, 19);
+          visual.fillEllipse(10, -4, 13, 19);
+          visual.fillStyle(COLORS.red, 1);
+          visual.fillCircle(0, 0, C.enemyRadius);
+          visual.lineStyle(3, COLORS.redDark, 1);
+          visual.strokeCircle(0, 0, C.enemyRadius);
+          visual.fillStyle(COLORS.ink, 1);
+          visual.fillCircle(-4, -2, 2);
+          visual.fillCircle(4, -2, 2);
+          visual.lineStyle(2, COLORS.ink, 1);
+          visual.beginPath();
+          visual.moveTo(-5, 5);
+          visual.lineTo(5, 5);
+          visual.strokePath();
+          visual.baseScale = 1;
+          visual.baseX = 0;
+          visual.baseY = 0;
+          return visual;
+        }
+
+        createEnemyDisplay() {
+          const display = this.add.container(0, 0).setDepth(16).setVisible(false);
+          const shadow = this.createShadow('bee');
+          const selection = this.selectEntityEntry('bee');
+          const visual = selection.entry
+            ? this.createManifestVisual(selection.entry)
+            : this.createBeeFallbackVisual();
+          display.add([shadow, visual]);
+          display.shadow = shadow;
+          display.visual = visual;
+          display.artTier = selection.tier;
+          this.visualTiers.bee = selection.tier;
+          return display;
+        }
+
+        acquireEnemy() {
+          const enemy = this.enemyPool.pop() || {
+            display: this.createEnemyDisplay(),
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            separation: 0,
+            age: 0,
+            shieldHits: 0,
+          };
+          enemy.display.setVisible(true).setAlpha(1).setScale(1).setRotation(0);
+          const visual = enemy.display.visual;
+          visual.setPosition(visual.baseX, visual.baseY)
+            .setScale(visual.baseScale)
+            .setRotation(0)
+            .setAlpha(1);
+          if (visual.clearTint) visual.clearTint();
+          if (visual.play && visual.anims && visual.anims.animationManager) {
+            const entry = this.artManifest.entities?.bee?.flySheet;
+            if (this.textureAvailable(entry) && entry.animation) visual.play(entry.animation.key, true);
+          }
+          enemy.display.shadow.setScale(1).setAlpha(enemy.display.shadow.baseAlpha);
+          enemy.separation = 0;
+          enemy.age = 0;
+          enemy.shieldHits = 0;
+          return enemy;
+        }
+
+        releaseEnemy(enemy) {
+          this.tweens.killTweensOf(enemy.display.visual);
+          enemy.display.setVisible(false);
+          this.enemyPool.push(enemy);
+        }
+
+        releaseAllEnemies() {
+          for (const enemy of this.enemies) this.releaseEnemy(enemy);
+          this.enemies.length = 0;
+        }
+
+        retireEnemy(index, enemy, rewarded) {
+          this.enemies.splice(index, 1);
+          this.showEnemyBurst(enemy.x, enemy.y, rewarded);
+          this.releaseEnemy(enemy);
+          if (rewarded) {
+            this.bonusScore += C.enemyDefeatScore;
+            this.score = Math.floor(this.elapsedSeconds) * 10 + this.bonusScore;
+            this.updateHud();
+          }
+        }
+
+        spawnEnemy(difficulty) {
+          if (this.enemies.length >= difficulty.enemyCap) return;
+          const enemy = this.acquireEnemy();
+          const edge = Phaser.Math.Between(0, 3);
+          const margin = 24;
+          if (edge === 0) {
+            enemy.x = Phaser.Math.Between(24, C.width - 24);
+            enemy.y = -margin;
+          } else if (edge === 1) {
+            enemy.x = C.width + margin;
+            enemy.y = Phaser.Math.Between(82, C.height - 24);
+          } else if (edge === 2) {
+            enemy.x = Phaser.Math.Between(24, C.width - 24);
+            enemy.y = C.height + margin;
+          } else {
+            enemy.x = -margin;
+            enemy.y = Phaser.Math.Between(82, C.height - 24);
+          }
+          const dx = this.pet.x - enemy.x;
+          const dy = this.pet.y - enemy.y;
+          const length = Math.hypot(dx, dy) || 1;
+          enemy.vx = dx / length * difficulty.speed;
+          enemy.vy = dy / length * difficulty.speed;
+          enemy.display.setPosition(enemy.x, enemy.y);
+          this.enemies.push(enemy);
+        }
+
+        updateEnemies(deltaSeconds, difficulty) {
+          for (let index = this.enemies.length - 1; index >= 0; index -= 1) {
+            const enemy = this.enemies[index];
+            enemy.age += deltaSeconds;
+            if (enemy.age >= C.enemyMaxLifetime) {
+              this.retireEnemy(index, enemy, false);
+              continue;
+            }
+            if (enemy.separation > 0) {
+              enemy.separation = Math.max(0, enemy.separation - deltaSeconds);
+            } else {
+              const dx = this.pet.x - enemy.x;
+              const dy = this.pet.y - enemy.y;
+              const length = Math.hypot(dx, dy) || 1;
+              enemy.vx = dx / length * difficulty.speed;
+              enemy.vy = dy / length * difficulty.speed;
+            }
+
+            const previous = { x: enemy.x, y: enemy.y };
+            let next = {
+              x: enemy.x + enemy.vx * deltaSeconds,
+              y: enemy.y + enemy.vy * deltaSeconds,
+            };
+            const shieldHit = this.findShieldHit(previous, next);
+            if (shieldHit) {
+              let normal = shieldHit.normal;
+              if (enemy.vx * normal.x + enemy.vy * normal.y > 0) {
+                normal = { x: -normal.x, y: -normal.y };
+              }
+              const reflected = Core.reflectVelocity({ x: enemy.vx, y: enemy.vy }, normal);
+              const reflectedLength = Math.hypot(reflected.x, reflected.y) || 1;
+              enemy.vx = reflected.x / reflectedLength * difficulty.speed;
+              enemy.vy = reflected.y / reflectedLength * difficulty.speed;
+              const remaining = deltaSeconds * (1 - shieldHit.time);
+              enemy.x = shieldHit.position.x + normal.x * 1.2 + enemy.vx * remaining;
+              enemy.y = shieldHit.position.y + normal.y * 1.2 + enemy.vy * remaining;
+              enemy.separation = C.separationSeconds;
+              enemy.shieldHits += 1;
+              this.showImpact(shieldHit.position.x, shieldHit.position.y);
+              this.animateBeeHit(enemy);
+              if (enemy.shieldHits >= C.enemyShieldHits) {
+                this.retireEnemy(index, enemy, true);
+                continue;
+              }
+            } else {
+              enemy.x = next.x;
+              enemy.y = next.y;
+            }
+
+            const bob = Math.sin(enemy.age * 9);
+            enemy.display.setPosition(enemy.x, enemy.y);
+            enemy.display.visual
+              .setRotation(Math.sin(enemy.age * 14) * 0.09)
+              .setY(enemy.display.visual.baseY + bob * 1.4);
+            enemy.display.shadow
+              .setScale(1 - bob * 0.045, 1)
+              .setAlpha(enemy.display.shadow.baseAlpha * (0.9 - bob * 0.08));
+
+            const petContact = this.collisionRadii.pet + this.collisionRadii.bee;
+            if (Core.distanceSq(enemy, this.pet) <= petContact * petContact) {
+              this.endGame();
+              return;
+            }
+
+            if (enemy.x < -110 || enemy.x > C.width + 110 || enemy.y < -110 || enemy.y > C.height + 110) {
+              this.enemies.splice(index, 1);
+              this.releaseEnemy(enemy);
+            }
+          }
+        }
+
+        animateBeeHit(enemy) {
+          const visual = enemy.display.visual;
+          this.tweens.killTweensOf(visual);
+          this.tweens.add({
+            targets: visual,
+            scaleX: visual.baseScale * 1.18,
+            scaleY: visual.baseScale * 0.78,
+            alpha: 0.72,
+            duration: 75,
+            yoyo: true,
+            ease: 'Quad.out',
+            onComplete: () => {
+              visual.setScale(visual.baseScale).setAlpha(1);
+            },
+          });
+        }
+
+        findShieldHit(previous, next) {
+          if (this.shieldPoints.length < 2) return null;
+          let earliest = null;
+          const collisionRadius = this.collisionRadii.bee + C.shieldRadius;
+          for (let index = 1; index < this.shieldPoints.length; index += 1) {
+            const hit = Core.sweptCircleSegment(
+              previous,
+              next,
+              collisionRadius,
+              this.shieldPoints[index - 1],
+              this.shieldPoints[index],
+            );
+            if (hit.hit && (!earliest || hit.time < earliest.time)) earliest = hit;
+          }
+          return earliest;
+        }
+
+        showImpact(x, y) {
+          const sparkEntry = this.artManifest.effects?.hitSpark;
+          if (this.textureAvailable(sparkEntry)) {
+            const spark = this.add.sprite(x, y, sparkEntry.key, 0).setDepth(28);
+            const scale = (sparkEntry.targetWidth || 38) / Math.max(1, spark.width);
+            spark
+              .setScale(scale * 0.45)
+              .setAlpha(0.35)
+              .setAngle(Phaser.Math.Between(-10, 10));
+            if (sparkEntry.animation) {
+              spark.play(sparkEntry.animation.key);
+              spark.once('animationcomplete', () => spark.destroy());
+            } else {
+              this.tweens.add({
+                targets: spark,
+                scale: scale * 1.12,
+                alpha: 0,
+                angle: spark.angle + Phaser.Math.Between(12, 28),
+                duration: 220,
+                ease: 'Quad.out',
+                onComplete: () => spark.destroy(),
+              });
+            }
+            this.cameras.main.shake(45, 0.0015);
+            return;
+          }
+          const ring = this.add.circle(x, y, 8, COLORS.white, 0.08)
+            .setStrokeStyle(3, COLORS.white, 0.9)
+            .setDepth(28);
+          this.tweens.add({
+            targets: ring,
+            radius: 22,
+            alpha: 0,
+            duration: 190,
+            onComplete: () => ring.destroy(),
+          });
+          this.cameras.main.shake(45, 0.0015);
+        }
+
+        showEnemyBurst(x, y, rewarded) {
+          const color = rewarded ? COLORS.amber : COLORS.blueLight;
+          const pieces = [];
+          const successEntry = this.artManifest.effects?.success;
+          const hasSuccessArt = rewarded && this.textureAvailable(successEntry);
+
+          if (hasSuccessArt) {
+            const success = this.add.image(x, y, successEntry.key).setDepth(29);
+            const scale = (successEntry.targetWidth || 110) / Math.max(1, success.width);
+            success.setScale(scale * 0.42).setAlpha(0.92).setAngle(-6);
+            this.tweens.add({
+              targets: success,
+              scale: scale * 1.08,
+              angle: 7,
+              alpha: 0,
+              duration: 520,
+              ease: 'Quad.out',
+              onComplete: () => success.destroy(),
+            });
+          } else {
+            for (let index = 0; index < 6; index += 1) {
+              const angle = index / 6 * Math.PI * 2;
+              const piece = this.add.circle(x, y, rewarded ? 3 : 2, color, rewarded ? 0.95 : 0.55)
+                .setDepth(29);
+              piece.burstX = x + Math.cos(angle) * (rewarded ? 24 : 15);
+              piece.burstY = y + Math.sin(angle) * (rewarded ? 24 : 15);
+              pieces.push(piece);
+            }
+          }
+          if (pieces.length > 0) {
+            this.tweens.add({
+              targets: pieces,
+              x: (target) => target.burstX,
+              y: (target) => target.burstY,
+              alpha: 0,
+              scale: 0.25,
+              duration: rewarded ? 260 : 180,
+              ease: 'Quad.out',
+              onComplete: () => pieces.forEach((piece) => piece.destroy()),
+            });
+          }
+          if (rewarded) {
+            const scoreText = this.createSharpText(x, y - 18, `+${C.enemyDefeatScore}`, {
+              fontSize: '13px',
+              fontStyle: 'bold',
+              color: '#fff1a8',
+              stroke: '#17324d',
+              strokeThickness: 3,
+            });
+            this.setTextAnchor(scoreText, x, y - 18, 0.5, 0.5).setDepth(30);
+            this.tweens.add({
+              targets: scoreText,
+              y: scoreText.y - 18,
+              alpha: 0,
+              duration: 520,
+              ease: 'Quad.out',
+              onComplete: () => scoreText.destroy(),
+            });
+          }
+        }
+
+        animatePetHurt() {
+          const hurtEntry = this.artManifest.entities?.pet?.hurtSheet;
+          if (this.textureAvailable(hurtEntry)) {
+            this.pet.visual.setVisible(false);
+            const hurt = this.createManifestVisual(hurtEntry);
+            this.pet.add(hurt);
+            this.pet.hurtVisual = hurt;
+            if (hurtEntry.animation && hurt.play) {
+              hurt.play(hurtEntry.animation.key);
+              hurt.once('animationcomplete', () => {
+                if (this.pet.hurtVisual === hurt) this.pet.hurtVisual = null;
+                hurt.destroy();
+                this.pet.visual.setVisible(true);
+              });
+            }
+            return;
+          }
+          const visual = this.pet.visual;
+          this.tweens.add({
+            targets: visual,
+            scaleX: visual.baseScale * 1.12,
+            scaleY: visual.baseScale * 0.82,
+            angle: { from: -5, to: 5 },
+            alpha: 0.55,
+            duration: 90,
+            yoyo: true,
+            repeat: 2,
+            onComplete: () => {
+              visual.setScale(visual.baseScale).setRotation(0).setAlpha(1);
+            },
+          });
+        }
+
+        endGame() {
+          if (this.runState !== 'playing') return;
+          this.runState = 'gameOver';
+          if (this.drawing) this.finishDrawing();
+          this.finishOnboarding(false);
+          this.clearFadingShields();
+          this.lengthText.setVisible(false);
+          this.score = Math.floor(this.elapsedSeconds) * 10 + this.bonusScore;
+          if (this.score > this.bestScore) {
+            this.bestScore = this.score;
+            this.writeBestScore(this.bestScore);
+          }
+          this.setFittedText(
+            this.resultText,
+            `TIME  ${this.formatTime(this.elapsedSeconds)}\nSCORE  ${this.score}\nBEST  ${this.bestScore}`,
+          );
+          this.gameOverOverlay.setVisible(true);
+          this.cameras.main.shake(160, 0.008);
+          this.animatePetHurt();
+        }
+
+        update(_time, delta) {
+          if (this.isPagePaused) return;
+          const boundedDelta = Math.min(delta, 50);
+          const deltaSeconds = boundedDelta / 1000;
+
+          if (this.runState !== 'playing') return;
+          this.elapsedSeconds += deltaSeconds;
+          this.score = Math.floor(this.elapsedSeconds) * 10 + this.bonusScore;
+          this.updateShieldLifetime(deltaSeconds);
+          const difficulty = Core.difficultyAt(this.elapsedSeconds);
+          this.spawnAccumulator += boundedDelta;
+          if (this.spawnAccumulator >= difficulty.spawnInterval) {
+            this.spawnAccumulator %= difficulty.spawnInterval;
+            this.spawnEnemy(difficulty);
+          }
+          this.updateEnemies(deltaSeconds, difficulty);
+          if (this.runState !== 'playing') return;
+          this.updateHud();
+        }
+
+        updateHud() {
+          this.setFittedText(this.timeLabel, `TIME  ${this.formatTime(this.elapsedSeconds || 0)}`);
+          this.setFittedText(this.scoreLabel, `SCORE  ${this.score || 0}`);
+          this.updateShieldHud();
+        }
+
+        formatTime(seconds) {
+          const whole = Math.max(0, Math.floor(seconds));
+          const minutes = String(Math.floor(whole / 60)).padStart(2, '0');
+          const remainder = String(whole % 60).padStart(2, '0');
+          return `${minutes}:${remainder}`;
+        }
+
+        readBestScore() {
+          try {
+            return Math.max(0, Number.parseInt(localStorage.getItem('pet-shield-best') || '0', 10) || 0);
+          } catch (_error) {
+            return 0;
+          }
+        }
+
+        writeBestScore(value) {
+          try {
+            localStorage.setItem('pet-shield-best', String(value));
+          } catch (_error) {
+            // Storage is optional; the in-memory best score remains available.
+          }
+        }
+      }
+
+      try {
+        const gameConfig = {
+          type: Phaser.CANVAS,
+          parent: 'game-root',
+          width: C.width * UI_RESOLUTION,
+          height: C.height * UI_RESOLUTION,
+          backgroundColor: '#8bd49b',
+          transparent: false,
+          render: { antialias: true, roundPixels: false },
+          scale: {
+            mode: Phaser.Scale.FIT,
+            autoCenter: Phaser.Scale.CENTER_BOTH,
+          },
+          input: {
+            activePointers: 2,
+            touch: { capture: true },
+          },
+          scene: [PetShieldScene],
+        };
+        window.petShieldGame = new Phaser.Game(gameConfig);
+      } catch (error) {
+        console.error(error);
+        const message = document.getElementById('loading-message');
+        if (message) message.textContent = 'Pet Shield could not start in this browser.';
+      }
+    })();
+  </script>
+</body>
+</html>

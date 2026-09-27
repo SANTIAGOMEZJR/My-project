@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Desierto Mortal - Supervivencia</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:#3a2a0a;color:#ffeebb;font-family:sans-serif;overflow:hidden}
+canvas{display:block;background:#c2a05a}#ui{position:absolute;top:10px;left:10px;background:rgba(60,30,10,0.9);padding:12px;border-radius:10px;border:1px solid #a07030;min-width:230px}
+.bar{height:10px;background:#222;border-radius:5px;overflow:hidden}.fill{height:100%;transition:width .2s}
+</style>
+</head>
+<body>
+<canvas id="g"></canvas>
+<div id="ui">
+<h3>🏜️ DESIERTO MORTAL</h3>
+<div>💧 Agua: <div class="bar"><div id="water" class="fill" style="background:#44aaff;width:80%"></div></div></div>
+<div>❤️ Vida: <div class="bar"><div id="hp" class="fill" style="background:#ff4444;width:100%"></div></div></div>
+<div>🌡️ Calor: <span id="heat">45</span>°C | Sombra: <span id="shade">No</span></div>
+<div>🗺️ Oasis: <span id="oasis">Lejos</span> | Cactus: <span id="cactus">0</span></div>
+<div style="font-size:11px;margin-top:6px">WASD mover • E beber/cortar cactus • Busca sombra al mediodía • De noche hace frío</div>
+<div>⏱️ Día <span id="day">1</span> - <span id="tod">Mediodía</span></div>
+</div>
+<script>
+const c=document.getElementById('g'),x=c.getContext('2d');function rs(){c.width=innerWidth;c.height=innerHeight}rs();addEventListener('resize',rs);
+let player={x:0,y:0,hp:100,water:80,cactus:0},oases=[],cacti=[],rocks=[],time=0,day=1,keys={},mirage=[];
+for(let i=0;i<6;i++) oases.push({x:(Math.random()-0.5)*2500,y:(Math.random()-0.5)*2500});
+for(let i=0;i<60;i++) cacti.push({x:(Math.random()-0.5)*3000,y:(Math.random()-0.5)*3000});
+for(let i=0;i<30;i++) rocks.push({x:(Math.random()-0.5)*3000,y:(Math.random()-0.5)*3000,s:20+Math.random()*30});
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key.toLowerCase()=='e') interact();});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function interact(){
+ let co=oases.find(o=>Math.hypot(o.x-player.x,o.y-player.y)<70); if(co){player.water=Math.min(100,player.water+50); return;}
+ let ca=cacti.find(o=>Math.hypot(o.x-player.x,o.y-player.y)<50); if(ca){player.water=Math.min(100,player.water+15);player.cactus++;player.hp-=2; cacti.splice(cacti.indexOf(ca),1);cacti.push({x:(Math.random()-0.5)*3000,y:(Math.random()-0.5)*3000});}
+}
+function update(){
+ let sp=3.2; if(keys['w'])player.y-=sp;if(keys['s'])player.y+=sp;if(keys['a'])player.x-=sp;if(keys['d'])player.x+=sp;
+ time+=0.02; if(time>100){time=0;day++;}
+ let tod=time<25?'Amanecer':time<50?'Mediodía':time<75?'Tarde':'Noche';
+ let heat = tod=='Mediodía'? 48 : tod=='Tarde'?42 : tod=='Amanecer'?35:18;
+ let inShade = rocks.some(r=>Math.hypot(r.x-player.x,r.y-player.y)<r.s+15) || oases.some(o=>Math.hypot(o.x-player.x,o.y-player.y)<80);
+ if(tod=='Mediodía' && !inShade) {player.water-=0.12; player.hp-=0.05;}
+ else if(tod=='Noche' && !inShade) {player.hp-=0.02; heat=15;}
+ else {player.water-=0.04;}
+ if(player.water<=0) player.hp-=0.15;
+ if(inShade && player.water>0) player.hp=Math.min(100,player.hp+0.03);
+ if(player.hp<=0){alert(`Moriste deshidratado. Día ${day}`);location.reload();}
+ document.getElementById('water').style.width=player.water+'%';document.getElementById('hp').style.width=player.hp+'%';
+ document.getElementById('heat').textContent=heat;document.getElementById('shade').textContent=inShade?'Sí':'No';
+ document.getElementById('oasis').textContent=oases.length? Math.floor(Math.min(...oases.map(o=>Math.hypot(o.x-player.x,o.y-player.y)))/10)+'m':'?';
+ document.getElementById('cactus').textContent=player.cactus;document.getElementById('day').textContent=day;document.getElementById('tod').textContent=tod;
+}
+function draw(){
+ let tod=time<25?'Amanecer':time<50?'Mediodía':time<75?'Tarde':'Noche';
+ let bg=tod=='Noche'?'#1a1a3a':tod=='Mediodía'?'#e8c36a':'#d4a85a'; x.fillStyle=bg; x.fillRect(0,0,c.width,c.height);
+ x.save();x.translate(c.width/2-player.x,c.height/2-player.y);
+ for(let r of rocks){x.fillStyle='#8a6a4a';x.beginPath();x.arc(r.x,r.y,r.s,0,Math.PI*2);x.fill();x.fillStyle='#6a4a2a';x.beginPath();x.arc(r.x-5,r.y-5,r.s*0.6,0,Math.PI*2);x.fill();}
+ for(let o of oases){x.fillStyle='#44aaff';x.beginPath();x.arc(o.x,o.y,50,0,Math.PI*2);x.fill();x.fillStyle='#2a8a2a';x.beginPath();x.arc(o.x,o.y,65,0,Math.PI*2);x.fill();x.fillStyle='#44aaff';x.beginPath();x.arc(o.x,o.y,40,0,Math.PI*2);x.fill();}
+ for(let ca of cacti){x.fillStyle='#2a7a2a';x.fillRect(ca.x-6,ca.y-15,12,30);x.fillRect(ca.x-14,ca.y-5,8,14);x.fillRect(ca.x+6,ca.y-2,8,12);x.fillStyle='#1a5a1a';x.fillRect(ca.x-2,ca.y-12,4,24);}
+ // player shadow
+ x.fillStyle='rgba(0,0,0,0.3)';x.beginPath();x.ellipse(player.x,player.y+12,12,5,0,0,Math.PI*2);x.fill();
+ x.fillStyle='#ffdbac';x.beginPath();x.arc(player.x,player.y,10,0,Math.PI*2);x.fill();x.fillStyle='#cc9966';x.fillRect(player.x-8,player.y+6,16,10);
+ x.restore();
+ if(tod=='Mediodía'){x.fillStyle='rgba(255,255,200,0.15)';x.fillRect(0,0,c.width,c.height);}
+ if(tod=='Noche'){x.fillStyle='rgba(0,0,50,0.4)';x.fillRect(0,0,c.width,c.height); x.fillStyle='#fff'; for(let i=0;i<100;i++){x.fillRect(Math.random()*c.width,Math.random()*c.height*0.5,1,1)}}
+}
+function loop(){update();draw();requestAnimationFrame(loop)}loop();
+</script>
+</body>
+</html>

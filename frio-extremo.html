@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frío Extremo - Supervivencia</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:#0a1520;color:#cceeff;font-family:Verdana;overflow:hidden}
+canvas{display:block;margin:0 auto;background:linear-gradient(#0a1a2a,#1a3a5a)}
+#ui{position:absolute;top:10px;left:10px;background:rgba(10,25,40,0.9);padding:14px;border-radius:12px;border:1px solid #3a7aaa;min-width:240px}
+.bar{height:10px;background:#111;border-radius:5px;overflow:hidden;margin:3px 0}.fill{height:100%}
+</style>
+</head>
+<body>
+<canvas id="g"></canvas>
+<div id="ui">
+<h3>❄️ FRÍO EXTREMO</h3>
+<div>🌡️ Temperatura: <span id="temp">-5</span>°C</div>
+<div>🔥 Fogata: <div class="bar"><div id="fire" class="fill" style="background:orange;width:60%"></div></div></div>
+<div>❤️ Vida: <div class="bar"><div id="hp" class="fill" style="background:#f44;width:100%"></div></div></div>
+<div>🪵 Madera: <span id="wood">0</span> | 🍖 Comida: <span id="food">3</span></div>
+<div style="font-size:11px;margin-top:8px">WASD mover, E recoger madera, F alimentar fogata, Q comer<br>¡No dejes que la fogata se apague o te congelas!</div>
+<div>⏱️ Tiempo: <span id="time">0</span>s | 🌨️ Tormentas: <span id="storms">0</span></div>
+</div>
+<script>
+const c=document.getElementById('g'),x=c.getContext('2d');function rs(){c.width=innerWidth;c.height=innerHeight}rs();addEventListener('resize',rs);
+let player={x:0,y:0,hp:100,wood:0,food:3},fire={x:0,y:0,fuel:60,max:100},trees=[],snow=[],temp=-5,storm=false,stormTimer=0,time=0,keys={},stormCount=0;
+for(let i=0;i<40;i++) trees.push({x:(Math.random()-0.5)*2000,y:(Math.random()-0.5)*2000,wood:3});
+for(let i=0;i<200;i++) snow.push({x:Math.random()*2000-1000,y:Math.random()*2000-1000,s:Math.random()*2+1,v:Math.random()*2+1});
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key.toLowerCase()=='e') collect();if(e.key.toLowerCase()=='f') feedFire();if(e.key.toLowerCase()=='q') eat();});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function collect(){let t=trees.find(o=>Math.hypot(o.x-player.x,o.y-player.y)<60);if(t){player.wood+=t.wood;trees.splice(trees.indexOf(t),1);trees.push({x:(Math.random()-0.5)*2000,y:(Math.random()-0.5)*2000,wood:3});}}
+function feedFire(){if(Math.hypot(fire.x-player.x,fire.y-player.y)<80 && player.wood>0){fire.fuel=Math.min(fire.max,fire.fuel+20);player.wood--;}}
+function eat(){if(player.food>0){player.food--;player.hp=Math.min(100,player.hp+15);}}
+function update(){
+ let sp=3;if(keys['w'])player.y-=sp;if(keys['s'])player.y+=sp;if(keys['a'])player.x-=sp;if(keys['d'])player.x+=sp;
+ time++; fire.fuel-=0.05 + (storm?0.15:0); fire.fuel=Math.max(0,fire.fuel);
+ let dist=Math.hypot(player.x-fire.x,player.y-fire.y);
+ let warmth=dist<150? (150-dist)/150*fire.fuel/10 : 0;
+ temp = -15 + warmth*25 - (storm?10:0);
+ if(fire.fuel<=0) temp=-30;
+ if(temp<0) player.hp-= (Math.abs(temp)/100);
+ if(warmth>0.5) player.hp=Math.min(100,player.hp+0.02);
+ if(player.hp<=0){alert(`Te congelaste. Sobreviviste ${Math.floor(time/60)}s con ${stormCount} tormentas`);location.reload();}
+ if(Math.random()<0.005 && !storm){storm=true;stormTimer=600;stormCount++;}
+ if(storm){stormTimer--;if(stormTimer<=0)storm=false;}
+ for(let s of snow){s.y+=s.v+(storm?4:0);s.x+=Math.sin(time*0.01+s.s)* (storm?3:0.5); if(s.y>1000){s.y=-1000;s.x=player.x+(Math.random()-0.5)*1200;}}
+ if(time%600==0 && Math.random()<0.5) player.food++;
+ document.getElementById('fire').style.width=fire.fuel+'%';document.getElementById('hp').style.width=player.hp+'%';document.getElementById('wood').textContent=player.wood;document.getElementById('food').textContent=player.food;document.getElementById('temp').textContent=temp.toFixed(1);document.getElementById('time').textContent=Math.floor(time/60);document.getElementById('storms').textContent=stormCount;
+}
+function draw(){
+ x.fillStyle=storm?'#0a1520':'#0f2a4a';x.fillRect(0,0,c.width,c.height);
+ x.save();x.translate(c.width/2-player.x,c.height/2-player.y);
+ // trees
+ for(let t of trees){x.fillStyle='#3a2a1a';x.fillRect(t.x-6,t.y,12,20);x.fillStyle='#e0f0ff';x.beginPath();x.arc(t.x,t.y,18,0,Math.PI*2);x.fill();x.fillStyle='#2a5a3a';x.beginPath();x.arc(t.x,t.y-5,14,0,Math.PI*2);x.fill();}
+ // fire
+ let flick=Math.random()*10; x.fillStyle=`rgba(255,${100+flick},0,0.3)`;x.beginPath();x.arc(fire.x,fire.y,fire.fuel*0.8,0,Math.PI*2);x.fill();
+ x.fillStyle='#ff4400';x.beginPath();x.arc(fire.x,fire.y,12+flick*0.3,0,Math.PI*2);x.fill();x.fillStyle='#ffaa00';x.beginPath();x.arc(fire.x,fire.y,6,0,Math.PI*2);x.fill();
+ x.fillStyle='#444';for(let i=0;i<8;i++) x.fillRect(fire.x-20+i*5,fire.y+10,4,8);
+ // player
+ x.fillStyle='#ffdbac';x.beginPath();x.arc(player.x,player.y,10,0,Math.PI*2);x.fill();x.fillStyle='#2244aa';x.fillRect(player.x-8,player.y+6,16,12);
+ // snow
+ x.fillStyle='rgba(255,255,255,0.8)';for(let s of snow){x.beginPath();x.arc(s.x,s.y,s.s,0,Math.PI*2);x.fill();}
+ x.restore();
+ if(storm){x.fillStyle='rgba(200,220,255,0.15)';x.fillRect(0,0,c.width,c.height); x.fillStyle='#fff';x.font='20px monospace';x.fillText('¡TORMENTA! Corre a la fogata',c.width/2-150,50);}
+}
+function loop(){update();draw();requestAnimationFrame(loop)}loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zombie Apocalipsis - Supervivencia</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:#111;color:#fff;font-family:monospace;overflow:hidden}
+#game{display:block;background:#1a1a1a;margin:0 auto} #ui{position:absolute;top:10px;left:10px;background:rgba(20,0,0,0.85);padding:12px;border-radius:10px;border:1px solid #a00;min-width:200px}
+.bar{height:12px;background:#300;border-radius:6px;overflow:hidden;margin:4px 0}.fill{height:100%;transition:width .2s}
+#cross{position:absolute;top:50%;left:50%;width:20px;height:20px;transform:translate(-50%,-50%);pointer-events:none}.cross-h{position:absolute;top:9px;left:0;width:20px;height:2px;background:#f00}.cross-v{position:absolute;left:9px;top:0;width:2px;height:20px;background:#f00}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="cross"><div class="cross-h"></div><div class="cross-v"></div></div>
+<div id="ui">
+<h3>🧟 ZOMBIE APOCALIPSIS</h3>
+<div>❤️ Vida: <span id="hp">100</span><div class="bar"><div id="hpB" class="fill" style="background:#f44;width:100%"></div></div></div>
+<div>🔫 Balas: <span id="ammo">30</span> | 🧟 Muertos: <span id="kills">0</span></div>
+<div>🌊 Oleada: <span id="wave">1</span> | ⏱️ <span id="time">00:00</span></div>
+<div style="font-size:11px;margin-top:8px">WASD mover • Mouse apuntar • Click disparar • R recargar • E botiquín</div>
+<div id="weapons" style="margin-top:8px;font-size:11px"></div>
+</div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}resize();addEventListener('resize',resize);
+let player={x:0,y:0,hp:100,ammo:30,ammoMax:30,kills:0,angle:0};
+let zombies=[],bullets=[],items=[],wave=1,waveTimer=0,timeSurvived=0,keys={},mouse={x:0,y:0};
+let shake=0;
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key.toLowerCase()=='r') player.ammo=player.ammoMax; if(e.key.toLowerCase()=='e') useMedkit();});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+canvas.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;player.angle=Math.atan2(mouse.y-canvas.height/2, mouse.x-canvas.width/2)});
+canvas.addEventListener('mousedown',()=>{if(player.ammo>0){bullets.push({x:player.x,y:player.y,dx:Math.cos(player.angle)*12,dy:Math.sin(player.angle)*12,life:60});player.ammo--;shake=5;new AudioContext().resume();} });
+function useMedkit(){let idx=items.findIndex(i=>i.type=='medkit'&&Math.hypot(i.x-player.x,i.y-player.y)<50);if(idx!=-1){player.hp=Math.min(100,player.hp+40);items.splice(idx,1)}}
+function spawnWave(){let count=5+wave*3;for(let i=0;i<count;i++){let ang=Math.random()*Math.PI*2,dist=600+Math.random()*400;zombies.push({x:player.x+Math.cos(ang)*dist,y:player.y+Math.sin(ang)*dist,hp:20+wave*5,speed:0.5+Math.random()*0.8+wave*0.05})}}
+spawnWave();
+function spawnItem(){if(Math.random()<0.015) items.push({type:Math.random()<0.5?'ammo':'medkit',x:player.x+(Math.random()-0.5)*800,y:player.y+(Math.random()-0.5)*600})}
+function update(){
+ timeSurvived++; waveTimer++;
+ if(zombies.length==0){wave++;waveTimer=0;spawnWave();player.ammo=player.ammoMax; if(wave%3==0) items.push({type:'medkit',x:player.x,y:player.y})}
+ let spd=3; if(keys['w']) player.y-=spd; if(keys['s']) player.y+=spd; if(keys['a']) player.x-=spd; if(keys['d']) player.x+=spd;
+ for(let z of zombies){let ang=Math.atan2(player.y-z.y, player.x-z.x);z.x+=Math.cos(ang)*z.speed;z.y+=Math.sin(ang)*z.speed; if(Math.hypot(z.x-player.x,z.y-player.y)<22){player.hp-=0.3+wave*0.05; shake=3;}}
+ for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];b.x+=b.dx;b.y+=b.dy;b.life--; for(let j=zombies.length-1;j>=0;j--){if(Math.hypot(b.x-zombies[j].x,b.y-zombies[j].y)<18){zombies[j].hp-=15;bullets.splice(i,1);if(zombies[j].hp<=0){zombies.splice(j,1);player.kills++;if(Math.random()<0.2) items.push({type:'ammo',x:zombies[j]?.x||b.x,y:zombies[j]?.y||b.y})}break;}} if(b && b.life<=0) bullets.splice(i,1);}
+ for(let i=items.length-1;i>=0;i--){if(Math.hypot(items[i].x-player.x,items[i].y-player.y)<25){if(items[i].type=='ammo'){player.ammo=Math.min(player.ammoMax+20,player.ammo+15);}else{player.hp=Math.min(100,player.hp+25);}items.splice(i,1);}}
+ if(player.hp<=0){alert(`¡Moriste! Sobreviviste ${Math.floor(timeSurvived/60)}s, mataste ${player.kills} zombies, llegaste a oleada ${wave}`);location.reload()}
+ spawnItem();
+ document.getElementById('hp').textContent=Math.floor(player.hp);document.getElementById('hpB').style.width=player.hp+'%';
+ document.getElementById('ammo').textContent=player.ammo;document.getElementById('kills').textContent=player.kills;document.getElementById('wave').textContent=wave;
+ document.getElementById('time').textContent=`${String(Math.floor(timeSurvived/60/60)).padStart(2,'0')}:${String(Math.floor(timeSurvived/60%60)).padStart(2,'0')}`;
+ document.getElementById('weapons').innerHTML=`Zombies: ${zombies.length} | Items: ${items.length}`;
+ if(shake>0) shake*=0.9;
+}
+function draw(){
+ ctx.save(); if(shake>1) ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake);
+ ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.translate(canvas.width/2-player.x, canvas.height/2-player.y);
+ // grid
+ ctx.strokeStyle='#222';ctx.lineWidth=1;for(let x=-2000;x<2000;x+=100){ctx.beginPath();ctx.moveTo(x,-2000);ctx.lineTo(x,2000);ctx.stroke()}for(let y=-2000;y<2000;y+=100){ctx.beginPath();ctx.moveTo(-2000,y);ctx.lineTo(2000,y);ctx.stroke()}
+ for(let it of items){ctx.fillStyle=it.type=='ammo'?'#ffaa00':'#00ff88';ctx.beginPath();ctx.arc(it.x,it.y,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000';ctx.font='12px monospace';ctx.fillText(it.type=='ammo'?'A':'+',it.x-4,it.y+4)}
+ for(let z of zombies){ctx.fillStyle='#44aa44';ctx.beginPath();ctx.arc(z.x,z.y,14,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ff0000';ctx.beginPath();ctx.arc(z.x-4,z.y-3,3,0,Math.PI*2);ctx.arc(z.x+4,z.y-3,3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000';ctx.fillRect(z.x-10,z.y-20,z.hp,3)}
+ ctx.fillStyle='#ffaa00';for(let b of bullets){ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill()}
+ // player
+ ctx.save();ctx.translate(player.x,player.y);ctx.rotate(player.angle);
+ ctx.fillStyle='#4488ff';ctx.fillRect(-12,-8,24,16);ctx.fillStyle='#ffdbac';ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#333';ctx.fillRect(8,-3,18,6);
+ ctx.restore();
+ ctx.restore();
+}
+function loop(){update();draw();requestAnimationFrame(loop)}loop();
+</script>
+</body>
+</html>
